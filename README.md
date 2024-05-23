@@ -1,7 +1,7 @@
 # Riemannian covariance estimation (riecovest)
 This is a package for estimation of signal covariance matrices from noisy signal and noise-only data. The package is using pymanopt to perform optimization over the specified Riemannian manifolds. More info can be found in the [documentation](https://sounds-research.github.io/riecovest/)
 
-The code was developed as part of the paper J. Brunnström, M. Moonen, and F. Elvander, “Robust signal and noise covariance matrix estimation using Riemannian optimization,” presented at the European Signal Processing Conference (EUSIPCO), Sep. 2024.The examples folder contains code to replicate the results from the paper. If you use this software in your research, please cite the paper. 
+The code was developed as part of the paper J. Brunnström, M. Moonen, and F. Elvander, “Robust signal and noise covariance matrix estimation using Riemannian optimization,” presented at the European Signal Processing Conference (EUSIPCO), Sep. 2024. The examples folder contains code to replicate the results from the paper. If you use this software in your research, please cite the paper. 
 ```
 @inproceedings{brunnstromRobust2024,
   title = {Robust Signal and Noise Covariance Matrix Estimation Using {{Riemannian}} Optimization},
@@ -27,6 +27,8 @@ To run the examples, a longer list of dependencies is needed. The list of depend
 pip install -r requirements_examples.txt
 ```
 Running the examples also requires an additional non-standard dependency [aspcol](https://github.com/SOUNDS-RESEARCH/aspcore). The package is not available on PyPi, so it has to be installed manually. The package can be installed by cloning the repository and installing via pip from the downloaded folder. 
+
+One of the examples also makes use of the [MeshRIR](https://www.sh01.org/MeshRIR/) dataset. It must be downloaded from the original source along with the dataset loader irutilities.py. 
 
 ## Acknowledgements
 The software has been developed during a PhD project as part of the [SOUNDS ETN](https://www.sounds-etn.eu) at KU Leuven. The SOUNDS project has recieved funding from the European Union's Horizon 2020 research and innovation programme under grant agreement No. 956369.

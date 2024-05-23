@@ -8,6 +8,7 @@ __pycache__/*
 .hypothesis
 figs/old/*
 figs/*
+examples/figs/*
 
 
 *.asv
@@ -15,7 +16,7 @@ figs/*
 **/.DS_Store
 *.pyc
 
-aspcol.egg-info
+riecovest.egg-info
 
 .gitignore.bak
 *.bak

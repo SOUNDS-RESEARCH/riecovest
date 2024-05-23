@@ -1,8 +1,16 @@
+"""Reproduces the second experiment in [brunnstromRobust2024].
 
+Uses the MeshRIR dataset, and it must be downloaded from the original source. The dataset is not included in the repository. Choose the correct path to the dataset in the code below, as well as putting the irutilities.py from the MeshRIR dataset in the same folder.
+
+References
+----------
+[brunnstromRobust2024] J. Brunnström, M. Moonen, and F. Elvander, “Robust signal and noise covariance matrix estimation using Riemannian optimization,” presented at the European Signal Processing Conference (EUSIPCO), Sep. 2024.
+"""
 import numpy as np
 import pandas as pd
 import pathlib
 import json
+import sys
 import soundfile as sf
 import scipy.linalg as splin
 import scipy.signal as spsig
@@ -12,17 +20,14 @@ import samplerate as sr_convert
 from seaborn_qqplot import pplot
 
 import matplotlib.pyplot as plt
-import aspsim.diagnostics.plot as aspplot
-import aspsim.fileutilities as futil
-import aspsim.diagnostics.plot as dplot
 
 import aspcol.distance as aspdist
 import aspcol.filterclasses as fc
 import aspcol.utilities as utils
+import aspcol.plot as aspplot
 
 import riecovest.covariance_estimation as covest
 import riecovest.random_matrices as rm
-import irutilities
 
 import seaborn as sns
 
@@ -117,8 +122,9 @@ def load_meshrir(sr):
     orig_sr = 48000
     ratio = sr / orig_sr
 
-    path_to_data_folder = pathlib.Path("c:/research/datasets/S32-M441_npy")
-    pos_mic, pos_src, ir_hires = irutilities.loadIR(path_to_data_folder)
+    #path_to_data_folder = pathlib.Path("c:/research/datasets/S32-M441_npy")
+
+    pos_mic, pos_src, ir_hires = irutilities.loadIR(MESHRIR_FOLDER)
     pos_mic = -pos_mic
     ir_hires = ir_hires[(0,19,21),...]
 
@@ -444,7 +450,7 @@ def show_matrices(mat_dict, fig_folder, name = ""):
         axes[i,2].set_title(f"Abs: {est_name}")
         
     
-    dplot.output_plot("pdf", fig_folder, f"matrices_{name}")
+    aspplot.output_plot("pdf", fig_folder, f"matrices_{name}")
 
 def show_eigenvalues(mat_dict, fig_folder, name = ""):
 
@@ -455,8 +461,8 @@ def show_eigenvalues(mat_dict, fig_folder, name = ""):
         ax.set_xlabel("Eigenvalue index")
         ax.legend()
 
-        dplot.set_basic_plot_look(ax)
-    dplot.output_plot("pdf", fig_folder, f"eigenvalues_{name}")
+        aspplot.set_basic_plot_look(ax)
+    aspplot.output_plot("pdf", fig_folder, f"eigenvalues_{name}")
     
 def estimation_errors_all(cov_sig, cov_noise, true_signal_cov, true_noise_cov, fig_folder, plot_name=""):
     true_noisy_sig_cov = true_signal_cov + true_noise_cov
@@ -536,7 +542,7 @@ def exp(noise_stft, signal_stft, noisy_sig_stft, cov_samples_noisy_signal, cov_s
         base_fig_folder = pathlib.Path(__file__).parent.joinpath("figs")
         base_fig_folder.mkdir(exist_ok=True)
 
-    fig_folder = futil.get_unique_folder_name("figs_", base_fig_folder)
+    fig_folder = utils.get_unique_folder("figs_", base_fig_folder)
     fig_folder.mkdir()
 
     sim_info = {}
@@ -682,7 +688,7 @@ def run_single_freq_exp(noise_stft, signal_stft, noisy_sig_stft,  cov_samples_no
     if base_fig_folder is None:
         base_fig_folder = pathlib.Path(__file__).parent.joinpath("figs")
         base_fig_folder.mkdir(exist_ok=True)
-    fig_folder = futil.get_unique_folder_name("figs_mc_", base_fig_folder)
+    fig_folder = utils.get_unique_folder("figs_mc_", base_fig_folder)
     fig_folder.mkdir()
 
     num_segments = cov_samples_noisy_signal.shape[0]
@@ -937,10 +943,7 @@ def downsample_freqs(ds_factor, cov_samples_noisy_signal, cov_samples_noise_only
 
 
 def run_full_speech_exp():
-    base_fig_folder = pathlib.Path(__file__).parent.joinpath("figs")
-    base_fig_folder.mkdir(exist_ok=True)
-
-    fig_folder = futil.get_unique_folder_name("figs_", base_fig_folder)
+    fig_folder = utils.get_unique_folder("figs_", BASE_FIG_FOLDER)
     fig_folder.mkdir()
 
     num_cov_data = 64
@@ -983,7 +986,13 @@ def run_full_speech_exp():
 
 
 if __name__ == "__main__":
-    fp = pathlib.Path(__file__).parent.joinpath("figs")
+    MESHRIR_FOLDER = pathlib.Path("c:/research/datasets/S32-M441_npy")
+    sys.path.append(str(MESHRIR_FOLDER))
+    import irutilities
+
+    BASE_FIG_FOLDER = pathlib.Path(__file__).parent.joinpath("figs")
+    BASE_FIG_FOLDER.mkdir(exist_ok=True)
+
     #rng = np.random.default_rng(12345654354)
     base_fdr = run_full_speech_exp()
 

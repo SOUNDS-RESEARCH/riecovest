@@ -4,7 +4,7 @@
    contain the root `toctree` directive.
 
 Riemannian covariance estimation (riecovest)
-===========================================
+============================================
 This is a package for estimation of signal covariance matrices from noisy signal and noise-only data. The package is using pymanopt to perform optimization over the specified Riemannian manifolds.
 
 API Reference

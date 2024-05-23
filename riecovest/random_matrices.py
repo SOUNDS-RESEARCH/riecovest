@@ -3,10 +3,21 @@ import scipy.stats as spstat
 
 
 def low_rank_cholesky(A, rank):
-    """
-    Returns L where A = L L*
-
+    """Computes a low-rank decomposition of a positive definite matrix A.
     
+    Returns L where A = L L*. Cholesky is a misnomer, since the decomposition returned here is not triangular.
+
+    Parameters
+    ----------
+    A : ndarray of shape (dim, dim)
+        Positive definite matrix to decompose.
+    rank : int
+        Rank of the low-rank decomposition.
+    
+    Returns
+    -------
+    L : ndarray of shape (dim, rank)
+        Low-rank decomposition of A. Satisfies A = L L*.
     """
     assert A.ndim == 2
     assert A.shape[0] == A.shape[1]
@@ -23,9 +34,31 @@ def low_rank_cholesky(A, rank):
 
 
 def sample_elliptic_distribution(mean, covariance, rank, rng, num_samples):
-    """Samples a central Elliptic distribution with given mean and scatter matrix.
-    See Theorem 3 of Complex Elliptically Symmetric Distributions: Survey, New Results and Applications
+    """Samples a central Elliptic distribution with given mean and scatter matrix. 
     
+    See Theorem 3 of [ollilaComplex2012]
+    
+    Parameters
+    ----------
+    mean : complex ndarray of shape (dim,)
+        Mean of the distribution.
+    covariance : complex ndarray of shape (dim, dim)
+        Covariance matrix of the distribution.
+    rank : int
+        Rank of the low-rank Cholesky factor of the covariance matrix.
+    rng : numpy.random.Generator
+        Random number generator.
+    num_samples : int
+        Number of samples to draw.
+
+    Returns
+    -------
+    sample : ndarray of shape (dim, num_samples)
+        Samples from the specified distribution.
+
+    References
+    ----------
+    [ollilaComplex2012] E. Ollila, D. E. Tyler, V. Koivunen, and H. V. Poor, “Complex elliptically symmetric distributions: survey, new results and applications,” IEEE Transactions on Signal Processing, vol. 60, no. 11, pp. 5597–5625, Nov. 2012, doi: 10.1109/TSP.2012.2212433.
     """
     dim = covariance.shape[0]
     assert covariance.shape == (dim, dim)
@@ -40,9 +73,9 @@ def sample_elliptic_distribution(mean, covariance, rank, rng, num_samples):
     raise NotImplementedError
 
 def sample_complex_t_distribution(mean, covariance, rng, num_samples, degrees_of_freedom):
-    """
-    See equation (21) and then Section IV. A in 
-    Complex Elliptically Symmetric Distributions: Survey, New Results and Applications
+    """Sample from a complex t-distribution with given mean, covariance matrix and degrees of freedom.
+
+    See equation (21) and then Section IV. A in [ollilaComplex2012]
 
     Parameters
     ----------
@@ -62,6 +95,10 @@ def sample_complex_t_distribution(mean, covariance, rng, num_samples, degrees_of
     -------
     sample : ndarray of shape (dim, num_samples)
         Samples from the specified distribution
+
+    References
+    ----------
+    [ollilaComplex2012] E. Ollila, D. E. Tyler, V. Koivunen, and H. V. Poor, “Complex elliptically symmetric distributions: survey, new results and applications,” IEEE Transactions on Signal Processing, vol. 60, no. 11, pp. 5597–5625, Nov. 2012, doi: 10.1109/TSP.2012.2212433.
     """
     n = sample_complex_gaussian(np.zeros_like(mean), covariance, rng, num_samples)
 
@@ -74,6 +111,24 @@ def sample_complex_t_distribution(mean, covariance, rng, num_samples, degrees_of
 
 
 def real_gaussian_from_complex(mean, cov):
+    """Converts mean and covariance of a complex Gaussian distribution to mean and covariance of a real Gaussian distribution.
+
+    Use this to sample from a complex Gaussian distribution by sampling from the corresponding real Gaussian distribution.
+
+    Parameters
+    ----------
+    mean : complex ndarray of shape (dim,)
+        Mean of the complex Gaussian distribution.
+    cov : complex ndarray of shape (dim, dim)
+        Covariance matrix of the complex Gaussian distribution.
+    
+    Returns
+    -------
+    mean : ndarray of shape (2*dim,)
+        Mean of the real Gaussian distribution.
+    cov : ndarray of shape (2*dim, 2*dim)
+        Covariance matrix of the real Gaussian distribution.
+    """
     cov = 0.5 * np.block([[np.real(cov), -np.imag(cov)], [np.imag(cov), np.real(cov)]])
     mean = np.concatenate([np.real(mean), np.imag(mean)])
     return mean, cov
@@ -103,37 +158,43 @@ def sample_complex_gaussian(mean, cov, rng, num_samples):
 
 
 def sample_real_t_distribution(mean, cov, rng, num_samples, degrees_of_freedom):
+    """Sample from a real t-distribution with given mean, covariance matrix and degrees of freedom.
+
+    Parameters
+    ----------
+    mean : ndarray of shape (dim,)
+        Mean of the real Gaussian distribution.
+    cov : ndarray of shape (dim, dim)
+        Covariance matrix of the real Gaussian distribution.
+    
+    Returns
+    -------
+    sample : ndarray of shape (dim, num_samples)
+        Real Gaussian samples.
+    """
     var = spstat.multivariate_t(loc = mean, shape=cov, df=degrees_of_freedom, allow_singular=True).rvs(size=num_samples, random_state=rng).T
     return var
 
 def sample_real_gaussian(mean, cov, rng, num_samples):
+    """Sample from a real Gaussian distribution with given mean and covariance matrix.
+
+    Parameters
+    ----------
+    mean : ndarray of shape (dim,)
+        Mean of the real Gaussian distribution.
+    cov : ndarray of shape (dim, dim)
+        Covariance matrix of the real Gaussian distribution.
+    
+    Returns
+    -------
+    sample : ndarray of shape (dim, num_samples)
+        Real Gaussian samples.
+    """
     var = rng.multivariate_normal(mean, cov, size=num_samples).T
     return var
 
 
 
-
-def random_covariance(dim, rank, complex_data = False, rng=None):
-    """
-    
-    Parameters
-    ----------
-
-    rank : int or "full"
-    
-    """
-    if rng is None:
-        rng = np.random.default_rng()
-
-    if complex_data:
-        basis = rng.uniform(-1, 1, size = (dim, rank)) + 1j*rng.uniform(-1, 1, size = (dim, rank))
-        cov = basis @ basis.conj().T
-        if dim > 1:
-            U = spstat.unitary_group.rvs(dim, random_state=rng)
-            cov = U @ cov @ U.conj().T
-    else:
-        raise NotImplementedError
-    return cov
 
 def random_signal_and_noise_covariance(dim, signal_rank, snr, complex_data=False, rng=None, condition = 1e-1):
     if complex_data:
@@ -162,6 +223,27 @@ def random_signal_and_noise_covariance(dim, signal_rank, snr, complex_data=False
 
     return cov_signal, cov_noise
 
+def random_covariance(dim, rank, complex_data = False, rng=None):
+    """
+    
+    Parameters
+    ----------
+
+    rank : int or "full"
+    
+    """
+    if rng is None:
+        rng = np.random.default_rng()
+
+    if complex_data:
+        basis = rng.uniform(-1, 1, size = (dim, rank)) + 1j*rng.uniform(-1, 1, size = (dim, rank))
+        cov = basis @ basis.conj().T
+        if dim > 1:
+            U = spstat.unitary_group.rvs(dim, random_state=rng)
+            cov = U @ cov @ U.conj().T
+    else:
+        raise NotImplementedError
+    return cov
 
 def random_signal_and_noise_covariance_old_heuristic(dim, signal_rank, snr, complex_data=False, rng=None):
     if complex_data:

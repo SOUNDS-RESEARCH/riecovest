@@ -1,17 +1,19 @@
+"""Reproduces the first experiment in [brunnstromRobust2024].
 
+References
+----------
+[brunnstromRobust2024] J. Brunnström, M. Moonen, and F. Elvander, “Robust signal and noise covariance matrix estimation using Riemannian optimization,” presented at the European Signal Processing Conference (EUSIPCO), Sep. 2024.
+"""
 import numpy as np
 import pathlib
-import scipy.linalg as splin
-import scipy.stats as spstat
 
 import json
 
 import matplotlib.pyplot as plt
-import aspsim.diagnostics.plot as aspplot
-import aspsim.fileutilities as futil
-import aspsim.diagnostics.plot as dplot
 
 import aspcol.distance as aspdist
+import aspcol.utilities as utils
+import aspcol.plot as aspplot
 
 import riecovest.covariance_estimation as covest
 import riecovest.random_matrices as rm
@@ -77,7 +79,7 @@ def exp(dim, rank, complex_data=True, noise_dist = "gaussian", signal_dist = "ga
         base_fig_folder = pathlib.Path(__file__).parent.joinpath("figs")
         base_fig_folder.mkdir(exist_ok=True)
 
-    fig_folder = futil.get_unique_folder_name("figs_", base_fig_folder)
+    fig_folder = utils.get_unique_folder("figs_", base_fig_folder)
     fig_folder.mkdir()
     
     num_cov_data = 64
@@ -193,7 +195,7 @@ def show_matrices(mat_dict, fig_folder, name = ""):
         axes[i,2].set_title(f"Abs: {est_name}")
         
     
-    dplot.output_plot("pdf", fig_folder, f"matrices_{name}")
+    aspplot.output_plot("pdf", fig_folder, f"matrices_{name}")
 
 def show_eigenvalues(mat_dict, fig_folder, name = ""):
 
@@ -204,8 +206,8 @@ def show_eigenvalues(mat_dict, fig_folder, name = ""):
         ax.set_xlabel("Eigenvalue index")
         ax.legend()
 
-        dplot.set_basic_plot_look(ax)
-    dplot.output_plot("pdf", fig_folder, f"eigenvalues_{name}")
+        aspplot.set_basic_plot_look(ax)
+    aspplot.output_plot("pdf", fig_folder, f"eigenvalues_{name}")
     
 
 
@@ -284,7 +286,7 @@ def run_monte_carlo_trial(num_trials, dim, rank, complex_data, noise_dist, signa
     if base_fig_folder is None:
         base_fig_folder = pathlib.Path(__file__).parent.joinpath("figs")
         base_fig_folder.mkdir(exist_ok=True)
-    fig_folder = futil.get_unique_folder_name("figs_mc_", base_fig_folder)
+    fig_folder = utils.get_unique_folder("figs_mc_", base_fig_folder)
     fig_folder.mkdir()
 
     rng = np.random.default_rng(123456789)
@@ -379,11 +381,8 @@ def summarize_metrics(metric_list, fig_folder):
 
 
 
-def run_exp_over_degrees_of_freedom():
-    base_fig_folder = pathlib.Path(__file__).parent.joinpath("figs")
-    base_fig_folder.mkdir(exist_ok=True)
-
-    fig_folder = futil.get_unique_folder_name("figs_", base_fig_folder)
+def run_exp_over_degrees_of_freedom(base_fig_folder):
+    fig_folder = utils.get_unique_folder("figs_", base_fig_folder)
     fig_folder.mkdir()
 
     dim = 10
@@ -553,11 +552,9 @@ def list_of_dicts_to_dict_of_lists(dct):
 
 
 if __name__ == "__main__":
-    #base_fdr = run_exp_over_degrees_of_freedom()
-    #base_fdr = pathlib.Path(__file__).parent.joinpath("figs").joinpath("figs_2024_02_28_00_33_0 condition 1e-1 n12")
-    # plot_parameter_exp(base_fdr)
-    base_fdr = pathlib.Path(__file__).parent.joinpath("figs").joinpath("figs_2024_02_27_10_22_0")
-    # plot_parameter_exp(base_fdr)
-    #base_fdr = pathlib.Path("C:/research/papers/2024_eusipco_manifold_cov_estimation/doc/figs/2024_02_21_experiment/figs_2024_02_21_00_16_0_exp4")
-    plot_parameter_exp(base_fdr)
-    plot_snr_for_exp(base_fdr)
+    base_fdr = pathlib.Path(__file__).parent.joinpath("figs")
+    base_fdr.mkdir(exist_ok=True)
+
+    fig_fdr = run_exp_over_degrees_of_freedom(base_fdr)
+    plot_parameter_exp(fig_fdr)
+    plot_snr_for_exp(fig_fdr)

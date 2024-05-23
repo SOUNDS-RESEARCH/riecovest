@@ -13,8 +13,8 @@ import aspsim.diagnostics.plot as dplot
 
 import aspcol.distance as aspdist
 
-import covariance_estimation as covest
-import random_matrices as rm
+import riecovest.covariance_estimation as covest
+import riecovest.random_matrices as rm
 
 
 def gen_sampled_data(dim, sig_rank, snr, num_cov_data, num_data, complex_data=True, noise_dist="gaussian", signal_dist="gaussian", rng=None, degrees_of_freedom=None, condition=1e-1):

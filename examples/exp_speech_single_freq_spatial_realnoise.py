@@ -20,8 +20,8 @@ import aspcol.distance as aspdist
 import aspcol.filterclasses as fc
 import aspcol.utilities as utils
 
-import covariance_estimation as covest
-import random_matrices as rm
+import riecovest.covariance_estimation as covest
+import riecovest.random_matrices as rm
 import irutilities
 
 import seaborn as sns

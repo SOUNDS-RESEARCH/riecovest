@@ -1,0 +1,6 @@
+riecovest.covariance\_estimation.est\_manifold\_frob\_whitened
+==============================================================
+
+.. currentmodule:: riecovest.covariance_estimation
+
+.. autofunction:: est_manifold_frob_whitened

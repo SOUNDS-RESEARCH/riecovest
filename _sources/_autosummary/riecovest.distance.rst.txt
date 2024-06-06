@@ -1,0 +1,38 @@
+﻿riecovest.distance
+==================
+
+.. automodule:: riecovest.distance
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+   
+      airm
+      frob_gevd_weighted
+      frob_sq
+      frob_sq_weighted
+      tyler_log_likelihood
+      tyler_log_likelihood_no_normalization
+      wasserstein_distance
+      wishart_likelihood
+      wishart_log_likelihood
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+

@@ -1,0 +1,6 @@
+riecovest.distance.wasserstein\_distance
+========================================
+
+.. currentmodule:: riecovest.distance
+
+.. autofunction:: wasserstein_distance

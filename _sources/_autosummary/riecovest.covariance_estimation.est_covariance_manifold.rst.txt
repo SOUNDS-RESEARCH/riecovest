@@ -1,0 +1,6 @@
+riecovest.covariance\_estimation.est\_covariance\_manifold
+==========================================================
+
+.. currentmodule:: riecovest.covariance_estimation
+
+.. autofunction:: est_covariance_manifold

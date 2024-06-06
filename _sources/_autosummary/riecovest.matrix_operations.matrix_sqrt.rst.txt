@@ -1,0 +1,6 @@
+riecovest.matrix\_operations.matrix\_sqrt
+=========================================
+
+.. currentmodule:: riecovest.matrix_operations
+
+.. autofunction:: matrix_sqrt

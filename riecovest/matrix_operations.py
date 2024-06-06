@@ -1,4 +1,4 @@
-"""Defines matrix operations using jax,
+"""Functions for matrix operations using jax.
 
 Made to ease the use of jax in algorithms requiring automatic differentiation, by adding some common operations that does not already exist in the library. 
 """

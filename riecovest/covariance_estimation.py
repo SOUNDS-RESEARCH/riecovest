@@ -1,3 +1,18 @@
+"""Covariance estimation on Riemannian manifolds.
+
+The primary focus is estimating a signal covariance matrix R_x and a noise covariance matrix R_v from a set of noisy signal samples and noise samples. The noise and signal are assumed to be independent, so that the relationship R_y = R_x + R_v holds, where R_y is the covariance of the noisy signal. 
+
+The signal covariance matrix is assumed to be low-rank, while the noise covariance matrix is assumed to be full-rank. 
+
+References
+----------
+[brunnstroemRobust2024] J. Brunnström, M. Moonen, and F. Elvander, “Robust signal and noise covariance matrix estimation using Riemannian optimization,” presented at the European Signal Processing Conference (EUSIPCO), Sep. 2024
+[serizelLowrank2014] R. Serizel, M. Moonen, B. V. Dijk, and J. Wouters, “Low-rank approximation based multichannel Wiener filter algorithms for noise reduction with application in cochlear implants,” IEEE/ACM Transactions on Audio, Speech, and Language Processing, vol. 22, no. 4, pp. 785–799, Apr. 2014, doi: 10.1109/TASLP.2014.2304240.
+[tylerDistributionfree1987] D. E. Tyler, “A distribution-free M-estimator of multivariate scatter,” The Annals of Statistics, vol. 15, no. 1, pp. 234–251, 1987.
+[ollilaComplex2012] E. Ollila, D. E. Tyler, V. Koivunen, and H. V. Poor, “Complex elliptically symmetric distributions: survey, new results and applications,” IEEE Transactions on Signal Processing, vol. 60, no. 11, pp. 5597–5625, Nov. 2012, doi: 10.1109/TSP.2012.2212433.
+[valrompaeyGEVD2018] R. Van Rompaey and M. Moonen, “GEVD based speech and noise correlation matrix estimation for multichannel Wiener filter based noise reduction,” in 2018 26th European Signal Processing Conference (EUSIPCO), Sep. 2018, pp. 2544–2548. doi: 10.23919/EUSIPCO.2018.8553109.
+"""
+
 import jax.numpy as jnp
 import numpy as np
 import scipy.linalg as splin
@@ -5,288 +20,8 @@ import scipy.linalg as splin
 import pymanopt
 
 
-# ========================== DISTANCE METRICS ==========================
-
-def frob_sq(A, B):
-    """The squared Frobenius distance between two matrices A and B.
-    
-    Parameters
-    ----------
-    A : ndarray of shape (M, N)
-        Matrix
-    B : ndarray of shape (M, N)
-        Matrix
-    
-    Returns
-    -------
-    distance : float
-        The squared Frobenius distance between A and B
-    """
-    diff = A - B
-    return jnp.real(jnp.trace(diff @ diff.conj().T))
-
-def frob_sq_weighted(A, B, W):
-    """The squared Frobenius distance between two matrices A and B, weighted by a matrix W.
-    
-    Parameters
-    ----------
-    A : ndarray of shape (M, M)
-        Matrix
-    B : ndarray of shape (M, M)
-        Matrix
-    W : ndarray of shape (M, M)
-        Weighting matrix
-
-    Returns
-    -------
-    distance : float
-        The squared Frobenius distance between A and B, weighted by W
-    """
-    diff = W @ (A - B) @ W.T.conj()
-    return jnp.real(jnp.trace(diff @ diff.conj().T))
-
-def wasserstein_distance(A, B):
-    """Computes the Wasserstein distance between two zero-mean Gaussian distributions defined by two positive definite matrices.
-
-    Parameters
-    ----------
-    A : ndarray of shape (M, M)
-        Positive definite matrix    
-    B : ndarray of shape (M, M)
-        Positive definite matrix
-
-    Returns
-    -------
-    distance : float
-        The distance between A and B in Wasserstein distance
-    """
-    A_sqrt = matrix_sqrt(A)
-    mix_term = A_sqrt @ B @ A_sqrt
-    mix_term_sqrt = matrix_sqrt(mix_term)
-    return jnp.real(jnp.trace(A + B - 2 * mix_term_sqrt))
-
-def matrix_sqrt(A):
-    """Computes the square root of a positive definite matrix A.
-
-    Clips eigenvalues below 1e-12 to avoid numerical instability.
-
-    Parameters
-    ----------
-    A : ndarray of shape (M, M)
-        Positive definite matrix
-    
-    Returns
-    -------
-    sqrt_A : ndarray of shape (M, M)
-        The square root of A. Such that sqrt_A @ sqrt_A = A
-    
-    """
-    eigvals, eigvecs = jnp.linalg.eigh(A)
-    eigvals = jnp.maximum(eigvals, 1e-12)
-    return eigvecs @ jnp.sqrt(jnp.diag(eigvals)) @ jnp.conj(eigvecs).T
-
-def airm(A, B):
-    """The affine invariant Riemannian metric distance between two positive definite matrices.
-    
-    Parameters
-    ----------
-    A : ndarray of shape (M, M)
-        Positive definite matrix
-    B : ndarray of shape (M, M)
-        Positive definite matrix
-    
-    Returns
-    -------
-    distance : float
-        The distance between A and B in AIRM distance
-    """
-    eigvals, _ = generalized_eigh(A, B)
-    return jnp.real(jnp.sqrt(jnp.sum(jnp.log(eigvals)**2)))
-
-def generalized_eigh(A, B):
-    """Computes the generalized eigenvalue decomposition of a pair of positive semidefinite matrices.
-    
-    Returns the same as scipy.linalg.eigh(A, B)
-
-    Parameters
-    ----------
-    A : ndarray of shape (M, M)
-        Hermitian matrix
-    B : ndarray of shape (M, M)
-        Positive definite matrix
-
-    Returns
-    -------
-    eigenvalues : ndarray of shape (M,)
-        Eigenvalues in ascending order
-    eigenvectors : ndarray of shape (M, M)
-        Eigenvectors in the columns
-    """
-    L = jnp.linalg.cholesky(B)
-    L_inv = jnp.linalg.inv(L)
-    C = L_inv @ A @ jnp.conj(L_inv.T)
-    eigenvalues, eigenvectors_transformed = jnp.linalg.eigh(C)
-    eigenvectors_original = jnp.conj(L_inv.T) @ eigenvectors_transformed
-    return eigenvalues, eigenvectors_original
-
-def frob_gevd_weighted(A, B): 
-    eigvals, eigvec = generalized_eigh(A, B)
-    eigvec = jnp.flip(eigvec, axis=-1)
-    eigvals = jnp.flip(eigvals, axis=-1)
-    W = eigvec.T.conj()
-
-    diff = W @ (A - B) @ W.T.conj()
-    return jnp.real(jnp.sqrt(jnp.trace(diff @ diff.conj().T)))
-
-
-
-def wishart_likelihood(mat_variable, cov, N):
-    """Wishart likelihood function.
-    
-    It is not a true likelihood, since the mass is not 1. It is however proportional to true likelihood with regards to the covariance matrix. Anything constant with regards
-    to the covariance is not taken into account. Therefore, the maximum likelihood estimator can be found by maximizing this function.
-
-    Parameters
-    ----------
-    mat_variable : ndarray of shape (M, M)
-        positive definite matrix
-    cov : ndarray of shape (M, M)
-        positive definite matrix
-    N : int
-        the degree of freedom parameter for the wishart distribution
-
-    Returns
-    -------
-    l : float
-        The likelihood of the data given the covariance matrix
-    """
-    M = mat_variable.shape[-1]
-    f1 = jnp.linalg.det(cov)**(-N)
-    f2 = jnp.exp(-jnp.trace(jnp.linalg.solve(cov, mat_variable)))
-    l = f1 * f2
-    if (jnp.abs(jnp.imag(l)) / jnp.abs(jnp.real(l))) > 1e-10:
-        print(f"warning: more than 1e-10 imaginary part for wishart likelihood")
-    return jnp.real(l)
-
-def wishart_log_likelihood(mat_variable, cov, N):
-    """Wishart log likelihood function.
-
-    It is not a true likelihood, since the mass is not 1. It is however proportional to true likelihood with regards to the covariance matrix. Anything constant with regards
-    to the covariance is not taken into account. Therefore, the maximum likelihood estimator can be found by maximizing this function.
-
-    Parameters
-    ----------
-    mat_variable : ndarray of shape (M, M)
-        positive definite matrix
-    cov : ndarray of shape (M, M)
-        positive definite matrix
-    N : int
-        the degree of freedom parameter for the wishart distribution
-
-    Returns
-    -------
-    l : float
-        The log likelihood of the data given the covariance matrix
-    """
-    M = mat_variable.shape[-1]
-    f1 = -N * jnp.log(jnp.linalg.det(cov))
-    f2 = -jnp.trace(jnp.linalg.solve(cov, mat_variable))
-    l = f1 + f2
-    if (jnp.abs(jnp.imag(l)) / jnp.abs(jnp.real(l))) > 1e-10:
-        print(f"warning: more than 1e-10 imaginary part for wishart likelihood")
-    return jnp.real(l)
-
-
-
-def tyler_log_likelihood(data, cov):
-    """Log likelihood function for a complex elliptically symmetric distribution.
-
-    It is not a true likelihood, since the mass is not 1. It is however proportional to true likelihood with regards to the covariance matrix. Anything constant with regards
-    to the covariance is not taken into account. Therefore, the maximum likelihood estimator can be found by maximizing this function.
-
-    Parameters
-    ----------
-    data : ndarray of shape (dim, num_samples)
-        data matrix that the likelihood is computed for
-    cov : ndrray of shape (dim, dim)
-        Covariance matrix of the distibution
-
-    Returns
-    -------
-    likelihood : float
-        The log likelihood of the data given the covariance matrix
-        
-    References
-    ----------
-    [ollilaComplex2012] E. Ollila, D. E. Tyler, V. Koivunen, and H. V. Poor, “Complex elliptically symmetric distributions: survey, new results and applications,” IEEE Transactions on Signal Processing, vol. 60, no. 11, pp. 5597–5625, Nov. 2012, doi: 10.1109/TSP.2012.2212433.
-    """
-    num_samples = data.shape[-1]
-    dim = data.shape[0]
-    cov_inv = jnp.linalg.inv(cov)
-    
-    likelihood = 0
-    for i in range(num_samples):
-        x = data[:,i:i+1]
-        x_bar = x / jnp.linalg.norm(x)
-        likelihood += jnp.squeeze(jnp.log(jnp.real(x_bar.T.conj() @ cov_inv @ x_bar)) * (dim / num_samples))
-
-    likelihood += jnp.log(jnp.real(jnp.linalg.det(cov)))
-    return -likelihood
-
-
-def tyler_log_likelihood_no_normalization(data, cov):
-    """Log likelihood function for a complex elliptically symmetric distribution.
-
-    Same as tyler_log_likelihood, but without normalizing the data to be unit vectors.
-
-    It is not a true likelihood, since the mass is not 1. It is however proportional to true likelihood with regards to the covariance matrix. Anything constant with regards
-    to the covariance is not taken into account. Therefore, the maximum likelihood estimator can be found by maximizing this function.
-
-    Parameters
-    ----------
-    data : ndarray of shape (dim, num_samples)
-        data matrix that the likelihood is computed for
-    cov : ndrray of shape (dim, dim)
-        Covariance matrix of the distibution
-
-    Returns
-    -------
-    likelihood : float
-        The log likelihood of the data given the covariance matrix
-
-    References
-    ----------
-    [ollilaComplex2012] E. Ollila, D. E. Tyler, V. Koivunen, and H. V. Poor, “Complex elliptically symmetric distributions: survey, new results and applications,” IEEE Transactions on Signal Processing, vol. 60, no. 11, pp. 5597–5625, Nov. 2012, doi: 10.1109/TSP.2012.2212433.
-    
-    """
-    num_samples = data.shape[-1]
-    dim = data.shape[0]
-    cov_inv = jnp.linalg.inv(cov)
-    
-    likelihood = 0
-    for i in range(num_samples):
-        x = data[:,i:i+1]
-        likelihood += jnp.squeeze(jnp.log(jnp.real(x.T.conj() @ cov_inv @ x)) * (dim / num_samples))
-
-    likelihood += jnp.log(jnp.real(jnp.linalg.det(cov)))
-    return -likelihood
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+import distance as dist
+import matrix_operations as matop
 
 #====================================== COVARIANCE ESTIMATORS ======================================
 def scm(data):
@@ -319,6 +54,11 @@ def tyler_estimator(data, num_iter=20):
     -------
     tyler : ndarray of shape (dim, dim)
         Tyler estimator of the covariance matrix.
+
+    References
+    ----------
+    [tylerDistributionfree1987] D. E. Tyler, “A distribution-free M-estimator of multivariate scatter,” The Annals of Statistics, vol. 15, no. 1, pp. 234–251, 1987.
+    [ollilaComplex2012] E. Ollila, D. E. Tyler, V. Koivunen, and H. V. Poor, “Complex elliptically symmetric distributions: survey, new results and applications,” IEEE Transactions on Signal Processing, vol. 60, no. 11, pp. 5597–5625, Nov. 2012, doi: 10.1109/TSP.2012.2212433.
     """
     dim = data.shape[0]
     num_samples = data.shape[1]
@@ -341,15 +81,32 @@ def tyler_estimator(data, num_iter=20):
 
 
 #==================== NOISE PLUS SIGNAL COVARIANCE ESTIMATORS
-
-# def tyler_estimator_noisy_signal(data_noisy_signal, data_noise, num_iter=20):
-#     Ry = tyler_estimator(data_noisy_signal, num_iter=num_iter)
-#     Rv = tyler_estimator(data_noise, num_iter=num_iter)
-#     return Ry - Rv, Rv
-
-
-
 def est_gevd(Ry, Rn, rank, est_noise_cov=False):
+    """Estimate the signal covariance matrix using the GEVD method.
+
+    Parameters
+    ----------
+    Ry : ndarray of shape (dim, dim) or (num_freqs, dim, dim)
+        Sample covariance matrix of the noisy signal.
+    Rn : ndarray of shape (dim, dim) or (num_freqs, dim, dim)
+        Sample covariance matrix of the noise.
+    rank : int
+        Rank of the signal covariance matrix. Must be less than or equal to dim.
+    est_noise_cov : bool, optional
+        If True, the noise covariance matrix is also estimated. Default is False.
+
+    Returns
+    -------
+    Rx_hat : ndarray of shape (dim, dim) or (num_freqs, dim, dim)
+        Estimated signal covariance matrix.
+    Rv_hat : ndarray of shape (dim, dim) or (num_freqs, dim, dim)
+        Estimated noise covariance matrix. Only returned if est_noise_cov is True.
+
+    References
+    ----------
+    [serizelLowrank2014] R. Serizel, M. Moonen, B. V. Dijk, and J. Wouters, “Low-rank approximation based multichannel Wiener filter algorithms for noise reduction with application in cochlear implants,” IEEE/ACM Transactions on Audio, Speech, and Language Processing, vol. 22, no. 4, pp. 785–799, Apr. 2014, doi: 10.1109/TASLP.2014.2304240.
+    [brunnstroemRobust2024] J. Brunnström, M. Moonen, and F. Elvander, “Robust signal and noise covariance matrix estimation using Riemannian optimization,” presented at the European Signal Processing Conference (EUSIPCO), Sep. 2024
+    """
     if Ry.ndim == 2:
         return _est_gevd(Ry, Rn, rank, est_noise_cov=est_noise_cov)
     
@@ -367,6 +124,35 @@ def est_gevd(Ry, Rn, rank, est_noise_cov=False):
     return out
 
 def _est_gevd(Ry, Rn, rank, out=None, est_noise_cov=False, out_noise_cov=None):
+    """Signal covariance estimator using the GEVD method.
+
+    Parameters
+    ----------
+    Ry : ndarray of shape (dim, dim)
+        Sample covariance matrix of the noisy signal.
+    Rn : ndarray of shape (dim, dim)
+        Sample covariance matrix of the noise.
+    rank : int
+        Rank of the signal covariance matrix. Must be less than or equal to dim.
+    out : ndarray of shape (dim, dim), optional
+        Output array for the estimated signal covariance matrix. If None, a new array is created.
+    est_noise_cov : bool, optional
+        If True, the noise covariance matrix is also estimated. Default is False.
+    out_noise_cov : ndarray of shape (dim, dim), optional
+        Output array for the estimated noise covariance matrix. If None, a new array is created.
+
+    Returns
+    -------
+    Rx_hat : ndarray of shape (dim, dim)
+        Estimated signal covariance matrix.
+    Rv_hat : ndarray of shape (dim, dim)
+        Estimated noise covariance matrix. Only returned if est_noise_cov is True.
+    
+    References
+    ----------
+    [serizelLowrank2014] R. Serizel, M. Moonen, B. V. Dijk, and J. Wouters, “Low-rank approximation based multichannel Wiener filter algorithms for noise reduction with application in cochlear implants,” IEEE/ACM Transactions on Audio, Speech, and Language Processing, vol. 22, no. 4, pp. 785–799, Apr. 2014, doi: 10.1109/TASLP.2014.2304240.
+    [brunnstroemRobust2024] J. Brunnström, M. Moonen, and F. Elvander, “Robust signal and noise covariance matrix estimation using Riemannian optimization,” presented at the European Signal Processing Conference (EUSIPCO), Sep. 2024
+    """
     dim = Rn.shape[0]
 
     eigvals, eigvec = splin.eigh(Ry, Rn + 1e-10*np.eye(dim))
@@ -404,6 +190,31 @@ def _est_gevd(Ry, Rn, rank, out=None, est_noise_cov=False, out_noise_cov=None):
 
 
 def est_covariance_manifold(ambient_dim, rank, cost, manifold, start_value=None):
+    """Generic function for estimating a signal and noise covariance matrix on a Riemannian manifold.
+
+    Assumes that the signal covariance matrix is low-rank and the noise covariance matrix is full-rank. Specifically that
+    the signal covariance matrix is returned in the form of X, where R_x = X @ X^H. 
+    
+    Parameters
+    ----------
+    ambient_dim : int
+        Dimension of the covariance matrices.
+    rank : int
+        Rank of the signal covariance matrix.
+    cost : function
+        Cost function to minimize. Must be compatible with pymanopt.function.jax.
+    manifold
+        Riemannian manifold to optimize over. Must be compatible with pymanopt.manifolds.
+    start_value : tuple of ndarrays, optional
+        Initial value for the optimization. If None, the optimization starts from a random point.
+
+    Returns
+    -------
+    Rx : ndarray of shape (ambient_dim, ambient_dim)
+        Estimated signal covariance matrix.
+    Rv : ndarray of shape (ambient_dim, ambient_dim)
+        Estimated noise covariance matrix.
+    """
     problem = pymanopt.Problem(
         manifold,
         cost,
@@ -422,7 +233,34 @@ def est_covariance_manifold(ambient_dim, rank, cost, manifold, start_value=None)
     Rx = X @ jnp.conj(X.T)
     return Rx, Rv
 
+
+
+
+
+
+
+
 def est_manifold_frob(scm_noisy_signal, scm_noise, rank, start_value=None):
+    """Signal and noise covariance estimation using the Frobenius norm distance.
+    
+    Parameters
+    ----------
+    scm_noisy_signal : ndarray of shape (ambient_dim, ambient_dim)
+        Sample covariance matrix of the noisy signal.
+    scm_noise : ndarray of shape (ambient_dim, ambient_dim)
+        Sample covariance matrix of the noise.
+    rank : int
+        Rank of the signal covariance matrix.
+    start_value : tuple of ndarrays, optional
+        Initial value for the optimization. If None, the optimization starts from a random point.
+    
+    Returns
+    -------
+    Rx : ndarray of shape (ambient_dim, ambient_dim)
+        Estimated signal covariance matrix.
+    Rv : ndarray of shape (ambient_dim, ambient_dim)
+        Estimated noise covariance matrix.
+    """
     ambient_dim = scm_noisy_signal.shape[0]
     scm_noisy_signal = (scm_noisy_signal + scm_noisy_signal.conj().T) / 2
     scm_noise = (scm_noise + scm_noise.conj().T) / 2
@@ -441,11 +279,35 @@ def est_manifold_frob(scm_noisy_signal, scm_noise, rank, start_value=None):
         Ry = Rx + Rv
         #error_y = scm_noisy_signal - Ry
         #error_v = scm_noise - Rv
-        return frob_sq(scm_noisy_signal, Ry) + frob_sq(scm_noise, Rv)
+        return dist.frob_sq(scm_noisy_signal, Ry) + dist.frob_sq(scm_noise, Rv)
     
     return est_covariance_manifold(ambient_dim, rank, cost, joint_manifold, start_value=start_value)
 
 def est_manifold_wishart(scm_noisy_signal, scm_noise, rank, num_scm_samples, alpha=0.5, start_value=None):
+    """Signal and noise covariance estimation using the Wishart log-likelihood distance.
+
+    Parameters
+    ----------
+    scm_noisy_signal : ndarray of shape (ambient_dim, ambient_dim)
+        Sample covariance matrix of the noisy signal.
+    scm_noise : ndarray of shape (ambient_dim, ambient_dim)
+        Sample covariance matrix of the noise.
+    rank : int
+        Rank of the signal covariance matrix.
+    num_scm_samples : int
+        Number of samples used to estimate the sample covariance matrix. Defines the degrees of freedom of the Wishart distribution.
+    alpha : float, optional
+        Weighting parameter between the noisy signal and the noise. Default is 0.5.
+    start_value : tuple of ndarrays, optional
+        Initial value for the optimization. If None, the optimization starts from a random point.
+
+    Returns
+    -------
+    Rx : ndarray of shape (ambient_dim, ambient_dim)
+        Estimated signal covariance matrix.
+    Rv : ndarray of shape (ambient_dim, ambient_dim)
+        Estimated noise covariance matrix.
+    """
     ambient_dim = scm_noisy_signal.shape[0]
     scm_noisy_signal = (scm_noisy_signal + scm_noisy_signal.conj().T) / 2
     scm_noise = (scm_noise + scm_noise.conj().T) / 2
@@ -463,109 +325,54 @@ def est_manifold_wishart(scm_noisy_signal, scm_noise, rank, num_scm_samples, alp
         Rx = X @ jnp.conj(X.T)
         Ry = Rx + Rv
         
-        llh_noisy_sig = wishart_log_likelihood(scm_noisy_signal, Ry, num_scm_samples)
-        llh_noise = wishart_log_likelihood(scm_noise, Rv, num_scm_samples)
-        #print(f"{llh_noisy_sig}, {llh_noise}")
+        llh_noisy_sig = dist.wishart_log_likelihood(scm_noisy_signal, Ry, num_scm_samples)
+        llh_noise = dist.wishart_log_likelihood(scm_noise, Rv, num_scm_samples)
+
         return -alpha * llh_noisy_sig - (1-alpha) * llh_noise
     Rx_est, Rv_est = est_covariance_manifold(ambient_dim, rank, cost, joint_manifold, start_value=start_value)
-    #scaling = np.trace(scm_noisy_signal) / np.trace(Rx_est + Rv_est)
-    #Rx_est *= scaling
-    #Rv_est *= scaling
+
     return Rx_est, Rv_est
 
 
-
-def est_manifold_tylers_m_estimator(data_noisy_signal, data_noise, rank, start_value=None):
-    ambient_dim = data_noisy_signal.shape[0]
-
-    scaling = np.trace(scm(data_noisy_signal))
-    # scm_noisy_signal = (scm_noisy_signal + scm_noisy_signal.conj().T) / 2
-    # scm_noise = (scm_noise + scm_noise.conj().T) / 2
-    
-    signal_manifold = pymanopt.manifolds.PSDFixedRankComplex(ambient_dim, rank)
-    noise_manifold = pymanopt.manifolds.HermitianPositiveDefinite(ambient_dim)
-    joint_manifold = pymanopt.manifolds.Product([signal_manifold, noise_manifold])
-
-    @pymanopt.function.jax(joint_manifold)
-    def cost(X, Rv):
-        """
-        X is shape : (ambient_dim, rank)
-        V is shape : (ambient_dim, ambient_dim)
-        """
-        Rx = X @ jnp.conj(X.T)
-        Ry = Rx + Rv
-        
-        #scaling_factor = scaling / jnp.trace(Ry)
-
-        #Rv *= scaling_factor
-        #Rx *= scaling_factor
-        #Ry *= scaling_factor
-        
-        llh_noisy_sig = tyler_log_likelihood(data_noisy_signal, Ry)
-        llh_noise = tyler_log_likelihood(data_noise, Rv)
-        return -llh_noisy_sig - llh_noise 
-    Rx_est, Rv_est = est_covariance_manifold(ambient_dim, rank, cost, joint_manifold, start_value=start_value)
-
-    #scaling_factor = ambient_dim / np.trace(Rx_est)
-    scaling = np.trace(scm(data_noisy_signal)) / np.trace(Rx_est + Rv_est)
-    Rx_est *= scaling
-    Rv_est *= scaling
-    return Rx_est, Rv_est
-
-
-def est_manifold_tylers_m_estimator_nonorm(data_noisy_signal, data_noise, rank, start_value=None):
-    ambient_dim = data_noisy_signal.shape[0]
-
-    trace_noisy_sig = np.trace(scm(data_noisy_signal))
-    trace_noise = np.trace(scm(data_noise))
-    trace_signal = trace_noisy_sig - trace_noise
-    # scm_noisy_signal = (scm_noisy_signal + scm_noisy_signal.conj().T) / 2
-    # scm_noise = (scm_noise + scm_noise.conj().T) / 2
-    
-    signal_manifold = pymanopt.manifolds.PSDFixedRankComplex(ambient_dim, rank)
-    noise_manifold = pymanopt.manifolds.HermitianPositiveDefinite(ambient_dim)
-    joint_manifold = pymanopt.manifolds.Product([signal_manifold, noise_manifold])
-
-    @pymanopt.function.jax(joint_manifold)
-    def cost(X, Rv):
-        """
-        X is shape : (ambient_dim, rank)
-        V is shape : (ambient_dim, ambient_dim)
-        """
-        Rx = X @ jnp.conj(X.T)
-        Rx = Rx / jnp.trace(Rx) * trace_signal
-        Rv = Rv / jnp.trace(Rv) * trace_noise
-        Ry = Rx + Rv
-        
-        #scaling_factor = scaling / jnp.trace(Ry)
-
-        #Rv *= scaling_factor
-        #Rx *= scaling_factor
-        #Ry *= scaling_factor
-        
-        llh_noisy_sig = tyler_log_likelihood_no_normalization(data_noisy_signal, Ry)
-        llh_noise = tyler_log_likelihood_no_normalization(data_noise, Rv)
-        return -llh_noisy_sig - llh_noise 
-    Rx_est, Rv_est = est_covariance_manifold(ambient_dim, rank, cost, joint_manifold, start_value=start_value)
-
-    #scaling_factor = ambient_dim / np.trace(Rx_est)
-    #scaling = np.trace(scm(data_noisy_signal)) / np.trace(Rx_est + Rv_est)
-    Rx_est = Rx_est / np.trace(Rx_est) * trace_signal
-    Rv_est = Rv_est / np.trace(Rv_est) * trace_noise
-    return Rx_est, Rv_est
 
 
 
 def est_manifold_frob_whitened(scm_noisy_signal, scm_noise, rank, alpha = 0.5, start_value=None):
+    """Signal and noise covariance estimation using the Frobenius norm distance, with pre-whitening.
+    
+    This should be equivalent to est_gevd, but with the optimization done on a Riemannian manifold.
+
+    Parameters
+    ----------
+    scm_noisy_signal : ndarray of shape (ambient_dim, ambient_dim)
+        Sample covariance matrix of the noisy signal.
+    scm_noise : ndarray of shape (ambient_dim, ambient_dim)
+        Sample covariance matrix of the noise.
+    rank : int
+        Rank of the signal covariance matrix.
+    alpha : float, optional
+        Weighting parameter between the noisy signal and the noise. Default is 0.5. This parameter should
+        not affect the optimal solution, but may affect the convergence of the optimization [vanRompaeyGEVD2018].
+
+    Returns
+    -------
+    Rx : ndarray of shape (ambient_dim, ambient_dim)
+        Estimated signal covariance matrix.
+    Rv : ndarray of shape (ambient_dim, ambient_dim)
+        Estimated noise covariance matrix.
+
+    References
+    ----------
+    [serizelLowrank2014] R. Serizel, M. Moonen, B. V. Dijk, and J. Wouters, “Low-rank approximation based multichannel Wiener filter algorithms for noise reduction with application in cochlear implants,” IEEE/ACM Transactions on Audio, Speech, and Language Processing, vol. 22, no. 4, pp. 785–799, Apr. 2014, doi: 10.1109/TASLP.2014.2304240.
+    [vanRompaeyGEVD2018] R. Van Rompaey and M. Moonen, “GEVD based speech and noise correlation matrix estimation for multichannel Wiener filter based noise reduction,” in 2018 26th European Signal Processing Conference (EUSIPCO), Sep. 2018, pp. 2544–2548. doi: 10.23919/EUSIPCO.2018.8553109.
+    """
     ambient_dim = scm_noisy_signal.shape[0]
     scm_noisy_signal = (scm_noisy_signal + scm_noisy_signal.conj().T) / 2
     scm_noise = (scm_noise + scm_noise.conj().T) / 2
 
     # eigvec_invt is Q in the derivations, eigvec is Q^-H
     eigvals, eigvec = splin.eigh(scm_noisy_signal, scm_noise + 1e-10*np.eye(scm_noise.shape[0]))
-    #eigvals2, eigvec2 = generalized_eigh(scm_noisy_signal, scm_noise + 1e-10*np.eye(scm_noise.shape[0]))
     eigvec = np.flip(eigvec, axis=-1)
-    #eigvec_invt = splin.inv(eigvec).T.conj()
     eigvals = np.flip(eigvals, axis=-1)
     Q_inv = eigvec.T.conj()
     By = np.diag(1 / np.sqrt(eigvals)) @ Q_inv
@@ -583,44 +390,45 @@ def est_manifold_frob_whitened(scm_noisy_signal, scm_noise, rank, alpha = 0.5, s
         """
         Rx = X @ jnp.conj(X.T)
         Ry = Rx + Rv
-        #error_y = scm_noisy_signal - Ry
-        #error_v = scm_noise - Rv
-        return alpha * frob_sq_weighted(scm_noisy_signal, Ry, Bv) + (1-alpha) * frob_sq_weighted(scm_noise, Rv, Bv)
+        return alpha * dist.frob_sq_weighted(scm_noisy_signal, Ry, Bv) + (1-alpha) * dist.frob_sq_weighted(scm_noise, Rv, Bv)
     return est_covariance_manifold(ambient_dim, rank, cost, joint_manifold, start_value=start_value)
-    # problem = pymanopt.Problem(
-    #     joint_manifold,
-    #     cost,
-    # )
-
-    # optimizer = pymanopt.optimizers.TrustRegions(
-    #     max_iterations=100, verbosity=2
-    # )
-    # if start_value is None:
-    #     cov_est = optimizer.run(problem, Delta_bar=8*np.sqrt(rank)).point
-    # else:
-    #     u, s, vh = np.linalg.svd(start_value[0], full_matrices=True, hermitian=True)
-    #     init_rx = u[:,:rank] * np.sqrt(s[None,:rank])
-    #     start_value = (init_rx, start_value[1])
-    #     cov_est = optimizer.run(problem, Delta_bar=8*np.sqrt(rank), initial_point=start_value).point
-    # X, Rv = cov_est
-    # Rx = X @ jnp.conj(X.T)
-    # return Rx, Rv
 
 
 def est_manifold_frob_whitened_by_true_noise(scm_noisy_signal, scm_noise, rank, alpha=0.5, start_value=None):
-    """
-    Same as est_manifold_frob_whitened, except that we extract the whitening parameter from 
-    the optimization variable Rv instead of the sample covariance matrix. It should according to
-    Robbes paper leda to the same solution for frobenious norm distance. 
+    """Signal and noise covariance estimation using the Frobenius norm distance, with pre-whitening using the 'true' noise covariance matrix.
+
+    This is equivalent to est_manifold_frob_whitened, except that the whitening parameter is extracted from 
+    the optimization variable Rv instead of the sample covariance matrix. This should lead to the same solution, see [vanRompaeyGEVD2018].
+
+    Parameters
+    ----------
+    scm_noisy_signal : ndarray of shape (ambient_dim, ambient_dim)
+        Sample covariance matrix of the noisy signal.
+    scm_noise : ndarray of shape (ambient_dim, ambient_dim)
+        Sample covariance matrix of the noise.
+    rank : int
+        Rank of the signal covariance matrix.
+    alpha : float, optional
+        Weighting parameter between the noisy signal and the noise. Default is 0.5. This parameter should
+        not affect the optimal solution, but may affect the convergence of the optimization [vanRompaeyGEVD2018].
+    start_value : tuple of ndarrays, optional
+        Initial value for the optimization. If None, the optimization starts from a random point.
+
+    Returns
+    -------
+    Rx : ndarray of shape (ambient_dim, ambient_dim)
+        Estimated signal covariance matrix.
+    Rv : ndarray of shape (ambient_dim, ambient_dim)
+        Estimated noise covariance matrix.
+
+    References
+    ----------
+    [vanRompaeyGEVD2018] R. Van Rompaey and M. Moonen, “GEVD based speech and noise correlation matrix estimation for multichannel Wiener filter based noise reduction,” in 2018 26th European Signal Processing Conference (EUSIPCO), Sep. 2018, pp. 2544–2548. doi: 10.23919/EUSIPCO.2018.8553109.
     """
     ambient_dim = scm_noisy_signal.shape[0]
     scm_noisy_signal = (scm_noisy_signal + scm_noisy_signal.conj().T) / 2
     scm_noise = (scm_noise + scm_noise.conj().T) / 2
 
-    # eigvec_invt is Q in the derivations, eigvec is Q^-H
-    #eigvals, eigvec = splin.eigh(scm_noisy_signal, scm_noise + 1e-10*np.eye(scm_noise.shape[0]))
-    
-
     signal_manifold = pymanopt.manifolds.PSDFixedRankComplex(ambient_dim, rank)
     noise_manifold = pymanopt.manifolds.HermitianPositiveDefinite(ambient_dim)
     joint_manifold = pymanopt.manifolds.Product([signal_manifold, noise_manifold])
@@ -634,39 +442,39 @@ def est_manifold_frob_whitened_by_true_noise(scm_noisy_signal, scm_noise, rank, 
         Rx = X @ jnp.conj(X.T)
         Ry = Rx + Rv
 
-        eigvals, eigvec = generalized_eigh(Ry, Rv + 1e-10*np.eye(scm_noise.shape[0]))
+        eigvals, eigvec = matop.generalized_eigh(Ry, Rv + 1e-10*np.eye(scm_noise.shape[0]))
         eigvec = jnp.flip(eigvec, axis=-1)
         eigvals = jnp.flip(eigvals, axis=-1)
         Bv = eigvec.T.conj()
 
-        return alpha * frob_sq_weighted(scm_noisy_signal, Ry, Bv) + (1-alpha)*frob_sq_weighted(scm_noise, Rv, Bv)
+        return alpha * dist.frob_sq_weighted(scm_noisy_signal, Ry, Bv) + (1-alpha)*dist.frob_sq_weighted(scm_noise, Rv, Bv)
     return est_covariance_manifold(ambient_dim, rank, cost, joint_manifold, start_value=start_value)
-    # problem = pymanopt.Problem(
-    #     joint_manifold,
-    #     cost,
-    # )
-
-    # optimizer = pymanopt.optimizers.TrustRegions(
-    #     max_iterations=100, verbosity=2
-    # )
-    # if start_value is None:
-    #     cov_est = optimizer.run(problem, Delta_bar=8*np.sqrt(rank)).point
-    # else:
-    #     u, s, vh = np.linalg.svd(start_value[0], full_matrices=True, hermitian=True)
-    #     init_rx = u[:,:rank] * np.sqrt(s[None,:rank])
-    #     start_value = (init_rx, start_value[1])
-    #     cov_est = optimizer.run(problem, Delta_bar=8*np.sqrt(rank), initial_point=start_value).point
-    # X, Rv = cov_est
-    # Rx = X @ jnp.conj(X.T)
-    # return Rx, Rv
-
 
 
 def est_manifold_airm(scm_noisy_signal, scm_noise, rank, alpha = 0.5, start_value=None):
-    ambient_dim = scm_noisy_signal.shape[0]
-    #scm_noisy_signal = (scm_noisy_signal + scm_noisy_signal.conj().T) / 2
-    #scm_noise = (scm_noise + scm_noise.conj().T) / 2
+    """Signal and noise covariance estimation using the affine-invariant Riemannian metric distance.
+    
+    Parameters
+    ----------
+    scm_noisy_signal : ndarray of shape (ambient_dim, ambient_dim)
+        Sample covariance matrix of the noisy signal.
+    scm_noise : ndarray of shape (ambient_dim, ambient_dim)
+        Sample covariance matrix of the noise.
+    rank : int
+        Rank of the signal covariance matrix.
+    alpha : float, optional
+        Weighting parameter between the noisy signal and the noise. Default is 0.5.
+    start_value : tuple of ndarrays, optional
+        Initial value for the optimization. If None, the optimization starts from a random point.
 
+    Returns
+    -------
+    Rx : ndarray of shape (ambient_dim, ambient_dim)
+        Estimated signal covariance matrix.
+    Rv : ndarray of shape (ambient_dim, ambient_dim)
+        Estimated noise covariance matrix.
+    """
+    ambient_dim = scm_noisy_signal.shape[0]
     signal_manifold = pymanopt.manifolds.PSDFixedRankComplex(ambient_dim, rank)
     noise_manifold = pymanopt.manifolds.HermitianPositiveDefinite(ambient_dim)
     joint_manifold = pymanopt.manifolds.Product([signal_manifold, noise_manifold])
@@ -679,43 +487,147 @@ def est_manifold_airm(scm_noisy_signal, scm_noise, rank, alpha = 0.5, start_valu
         """
         Rx = X @ jnp.conj(X.T)
         Ry = Rx + Rv
-        return alpha * airm(Ry, scm_noisy_signal)**2 + (1 - alpha) * airm(Rv, scm_noise)**2 #+ 1e-4*jnp.real(jnp.trace(Rx @ Rx.conj().T)) + 1e-4*jnp.real(jnp.trace(Rv @ Rv.conj().T)) #1e-5 * frob(Rv, scm_noise) + 1e-5 * frob(Ry, scm_noisy_signal)  #+ 1e-6*jnp.real(jnp.trace(Rx @ Rx.conj().T))#+ 1e-6 * frob(Ry, scm_noisy_signal) + 1e-6 * frob(Rv, scm_noise) #jnp.real(jnp.trace(Rx @ Rx.conj().T))
+        return alpha * dist.airm(Ry, scm_noisy_signal)**2 + (1 - alpha) * dist.airm(Rv, scm_noise)**2
     return est_covariance_manifold(ambient_dim, rank, cost, joint_manifold, start_value=start_value)
-    # problem = pymanopt.Problem(
-    #     joint_manifold,
-    #     cost,
-    # )
 
-    # optimizer = pymanopt.optimizers.TrustRegions(
-    #     max_iterations=300, min_step_size=1e-8, verbosity=2
-    # )
-    # if start_value is None:
-    #     cov_est = optimizer.run(problem, Delta_bar=8*np.sqrt(rank)).point
-    # else:
-    #     u, s, vh = np.linalg.svd(start_value[0], full_matrices=True, hermitian=True)
-    #     init_rx = u[:,:rank] * np.sqrt(s[None,:rank])
-    #     start_value = (init_rx, start_value[1])
-    #     cov_est = optimizer.run(problem, Delta_bar=8*np.sqrt(rank), initial_point=start_value).point
-    # X, Rv = cov_est
-    # Rx = X @ jnp.conj(X.T)
-    # return Rx, Rv
+def est_manifold_tylers_m_estimator(data_noisy_signal, data_noise, rank, start_value=None):
+    """Signal and noise covariance estimation using the log-likelihood of an elliptical distribution.
+
+    This is the proposed method of [brunnstroemRobust2024].
+
+    Parameters
+    ----------
+    data_noisy_signal : ndarray of shape (ambient_dim, num_samples)
+        Noisy signal samples.
+    data_noise : ndarray of shape (ambient_dim, num_samples)
+        Noise samples.
+    rank : int
+        Rank of the signal covariance matrix.
+    start_value : tuple of ndarrays, optional
+        Initial value for the optimization. If None, the optimization starts from a random point.
+
+    Returns
+    -------
+    Rx : ndarray of shape (ambient_dim, ambient_dim)    
+        Estimated signal covariance matrix.
+    Rv : ndarray of shape (ambient_dim, ambient_dim)
+        Estimated noise covariance matrix.
+
+    References
+    ----------
+    [brunnstroemRobust2024] J. Brunnström, M. Moonen, and F. Elvander, “Robust signal and noise covariance matrix estimation using Riemannian optimization,” presented at the European Signal Processing Conference (EUSIPCO), Sep. 2024
+    """
+    ambient_dim = data_noisy_signal.shape[0]
+    scaling = np.trace(scm(data_noisy_signal))
+    
+    signal_manifold = pymanopt.manifolds.PSDFixedRankComplex(ambient_dim, rank)
+    noise_manifold = pymanopt.manifolds.HermitianPositiveDefinite(ambient_dim)
+    joint_manifold = pymanopt.manifolds.Product([signal_manifold, noise_manifold])
+
+    @pymanopt.function.jax(joint_manifold)
+    def cost(X, Rv):
+        """
+        X is shape : (ambient_dim, rank)
+        V is shape : (ambient_dim, ambient_dim)
+        """
+        Rx = X @ jnp.conj(X.T)
+        Ry = Rx + Rv
+
+        llh_noisy_sig = dist.tyler_log_likelihood(data_noisy_signal, Ry)
+        llh_noise = dist.tyler_log_likelihood(data_noise, Rv)
+        return -llh_noisy_sig - llh_noise 
+    Rx_est, Rv_est = est_covariance_manifold(ambient_dim, rank, cost, joint_manifold, start_value=start_value)
+
+    scaling = np.trace(scm(data_noisy_signal)) / np.trace(Rx_est + Rv_est)
+    Rx_est *= scaling
+    Rv_est *= scaling
+    return Rx_est, Rv_est
 
 
+def est_manifold_tylers_m_estimator_nonorm(data_noisy_signal, data_noise, rank, start_value=None):
+    """Signal and noise covariance estimation using the log-likelihood of an elliptical distribution.
 
+    This is a slight variation of the proposed method of [brunnstroemRobust2024], using a different definition of the log-likelihood.
 
+    Parameters
+    ----------
+    data_noisy_signal : ndarray of shape (ambient_dim, num_samples)
+        Noisy signal samples.
+    data_noise : ndarray of shape (ambient_dim, num_samples)
+        Noise samples.
+    rank : int
+        Rank of the signal covariance matrix.
+    start_value : tuple of ndarrays, optional
+        Initial value for the optimization. If None, the optimization starts from a random point.
 
+    Returns
+    -------
+    Rx : ndarray of shape (ambient_dim, ambient_dim)    
+        Estimated signal covariance matrix.
+    Rv : ndarray of shape (ambient_dim, ambient_dim)
+        Estimated noise covariance matrix.
 
+    References
+    ----------
+    [brunnstroemRobust2024] J. Brunnström, M. Moonen, and F. Elvander, “Robust signal and noise covariance matrix estimation using Riemannian optimization,” presented at the European Signal Processing Conference (EUSIPCO), Sep. 2024
+    """
+    ambient_dim = data_noisy_signal.shape[0]
 
+    trace_noisy_sig = np.trace(scm(data_noisy_signal))
+    trace_noise = np.trace(scm(data_noise))
+    trace_signal = trace_noisy_sig - trace_noise
+    
+    signal_manifold = pymanopt.manifolds.PSDFixedRankComplex(ambient_dim, rank)
+    noise_manifold = pymanopt.manifolds.HermitianPositiveDefinite(ambient_dim)
+    joint_manifold = pymanopt.manifolds.Product([signal_manifold, noise_manifold])
 
+    @pymanopt.function.jax(joint_manifold)
+    def cost(X, Rv):
+        """
+        X is shape : (ambient_dim, rank)
+        V is shape : (ambient_dim, ambient_dim)
+        """
+        Rx = X @ jnp.conj(X.T)
+        Rx = Rx / jnp.trace(Rx) * trace_signal
+        Rv = Rv / jnp.trace(Rv) * trace_noise
+        Ry = Rx + Rv
+        
+        llh_noisy_sig = dist.tyler_log_likelihood_no_normalization(data_noisy_signal, Ry)
+        llh_noise = dist.tyler_log_likelihood_no_normalization(data_noise, Rv)
+        return -llh_noisy_sig - llh_noise 
+    Rx_est, Rv_est = est_covariance_manifold(ambient_dim, rank, cost, joint_manifold, start_value=start_value)
+
+    Rx_est = Rx_est / np.trace(Rx_est) * trace_signal
+    Rv_est = Rv_est / np.trace(Rv_est) * trace_noise
+    return Rx_est, Rv_est
 
 def est_manifold_tylers_with_scale_opt(data_noisy_signal, data_noise, rank):
+    """Signal and noise covariance estimation using the log-likelihood of an elliptical distribution, with scaling optimization.
+
+    This is a slight variation of the proposed method of [brunnstroemRobust2024], which explicitly optimizes over a scaling factor.
+
+    Parameters
+    ----------
+    data_noisy_signal : ndarray of shape (ambient_dim, num_samples)
+        Noisy signal samples.
+    data_noise : ndarray of shape (ambient_dim, num_samples)
+        Noise samples.
+    rank : int
+        Rank of the signal covariance matrix.
+
+    Returns
+    -------
+    Rx : ndarray of shape (ambient_dim, ambient_dim)    
+        Estimated signal covariance matrix.
+    Rv : ndarray of shape (ambient_dim, ambient_dim)
+        Estimated noise covariance matrix.
+
+    """
     ambient_dim = data_noisy_signal.shape[0]
 
     Ry_trace = np.trace(scm(data_noisy_signal))
     Rv_trace = np.trace(scm(data_noise))
-    # scm_noisy_signal = (scm_noisy_signal + scm_noisy_signal.conj().T) / 2
-    # scm_noise = (scm_noise + scm_noise.conj().T) / 2
-    
+
     signal_manifold = pymanopt.manifolds.PSDFixedRankComplex(ambient_dim, rank)
     noise_manifold = pymanopt.manifolds.HermitianPositiveDefinite(ambient_dim)
     scaling_manifold = pymanopt.manifolds.Positive(2, 1)
@@ -733,15 +645,8 @@ def est_manifold_tylers_with_scale_opt(data_noisy_signal, data_noise, rank):
         Ry = Rx + Rv
         
         scaling_error = jnp.abs(jnp.trace(Rx + Rv) - Ry_trace)**2 + jnp.abs(jnp.trace(Rv) - Rv_trace)**2
-
-        #scaling_factor = scaling / jnp.trace(Ry)
-
-        #Rv *= scaling_factor
-        #Rx *= scaling_factor
-        #Ry *= scaling_factor
-        
-        llh_noisy_sig = tyler_log_likelihood(data_noisy_signal, Ry)
-        llh_noise = tyler_log_likelihood(data_noise, Rv)
+        llh_noisy_sig = dist.tyler_log_likelihood(data_noisy_signal, Ry)
+        llh_noise = dist.tyler_log_likelihood(data_noise, Rv)
         return -llh_noisy_sig - llh_noise + 1e3 * scaling_error
     
     problem = pymanopt.Problem(joint_manifold,cost,)
@@ -752,13 +657,12 @@ def est_manifold_tylers_with_scale_opt(data_noisy_signal, data_noise, rank):
     Rx *= scale[0] / jnp.trace(Rx)
     Rv *= scale[1] / jnp.trace(Rv)
 
-
-    #Rx_est, Rv_est = est_covariance_manifold(ambient_dim, rank, cost, joint_manifold, start_value=start_value)
-    #scaling_factor = ambient_dim / np.trace(Rx_est)
-    #scaling = np.trace(scm(data_noisy_signal)) / np.trace(Rx_est + Rv_est)
-    #Rx_est *= scaling
-    #Rv_est *= scaling
     return Rx, Rv
+
+
+
+
+
 
 
 

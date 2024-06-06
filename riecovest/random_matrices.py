@@ -1,8 +1,10 @@
+"""Functions for randomly sampling vectors and positive matrices.
+"""
 import numpy as np
 import scipy.stats as spstat
 
 
-def low_rank_cholesky(A, rank):
+def _low_rank_cholesky(A, rank):
     """Computes a low-rank decomposition of a positive definite matrix A.
     
     Returns L where A = L L*. Cholesky is a misnomer, since the decomposition returned here is not triangular.
@@ -63,13 +65,12 @@ def sample_elliptic_distribution(mean, covariance, rank, rng, num_samples):
     dim = covariance.shape[0]
     assert covariance.shape == (dim, dim)
     assert mean.shape == (dim,)
-    A = low_rank_cholesky(covariance, rank)
+    A = _low_rank_cholesky(covariance, rank)
 
     gaussian_vec = sample_complex_gaussian(np.zeros(dim), np.eye(dim), rng, num_samples)
     angular_vec = gaussian_vec / np.linalg.norm(gaussian_vec, axis=0, keepdims=True)
 
-    elliptic_vec = mean[:,None] + scaling * A @ angular_vec
-    
+    #elliptic_vec = mean[:,None] + scaling * A @ angular_vec
     raise NotImplementedError
 
 def sample_complex_t_distribution(mean, covariance, rng, num_samples, degrees_of_freedom):
@@ -197,6 +198,32 @@ def sample_real_gaussian(mean, cov, rng, num_samples):
 
 
 def random_signal_and_noise_covariance(dim, signal_rank, snr, complex_data=False, rng=None, condition = 1e-1):
+    """Samples a random signal and noise covariance matrix with given signal rank and signal-to-noise ratio.
+    
+    Samples the eigenvalues according to a log-uniform distribution between condition and 1. That means tha the condition number of the covariance matrix is at most the supplied argument condition. The signal covariance matrix is then scaled to the desired SNR, and the noise covariance matrix is scaled to have trace equal to dim.
+
+    Parameters
+    ----------
+    dim : int
+        Dimension of the covariance matrices.
+    signal_rank : int
+        Rank of the signal covariance matrix.
+    snr : float
+        Signal-to-noise ratio.
+    complex_data : bool
+        Whether the data is complex or real.
+    rng : numpy.random.Generator
+        Random number generator.
+    condition : float
+        Lower bound of the log-uniform distribution of the eigenvalues.
+
+    Returns
+    -------
+    cov_signal : ndarray of shape (dim, dim)
+        Signal covariance matrix.
+    cov_noise : ndarray of shape (dim, dim)
+        Noise covariance matrix.
+    """
     if complex_data:
         all_bases_noise = spstat.unitary_group.rvs(dim, random_state=rng)
         all_bases_signal = spstat.unitary_group.rvs(dim, random_state=rng)[:,:signal_rank]
@@ -224,13 +251,25 @@ def random_signal_and_noise_covariance(dim, signal_rank, snr, complex_data=False
     return cov_signal, cov_noise
 
 def random_covariance(dim, rank, complex_data = False, rng=None):
-    """
+    """Samples a random covariance matrix with given rank.
+
+    Uses a heuristic method to generate the matrix, giving little control over the exact properties of the matrix.
     
     Parameters
     ----------
+    dim : int
+        Dimension of the covariance matrix.
+    rank : int or 'full'
+        Rank of the covariance matrix. If 'full', the matrix is full rank.
+    complex_data : bool
+        Whether the data is complex or real.
+    rng : numpy.random.Generator
+        Random number generator.
 
-    rank : int or "full"
-    
+    Returns
+    -------
+    cov : ndarray of shape (dim, dim)
+        Random covariance matrix.
     """
     if rng is None:
         rng = np.random.default_rng()
@@ -244,42 +283,6 @@ def random_covariance(dim, rank, complex_data = False, rng=None):
     else:
         raise NotImplementedError
     return cov
-
-def random_signal_and_noise_covariance_old_heuristic(dim, signal_rank, snr, complex_data=False, rng=None):
-    if complex_data:
-        noise_basis = rng.uniform(-1, 1, size = (dim, 2*dim)) + 1j*rng.uniform(-1, 1, size = (dim, 2*dim))
-        cov_noise = noise_basis @ noise_basis.conj().T / (2*dim)
-        cov_noise += 1e-2 * np.eye(dim)
-
-        U = spstat.unitary_group.rvs(dim, random_state=rng)
-        cov_noise = U @ cov_noise @ U.conj().T
-
-        signal_basis = rng.uniform(-1, 1, size = (dim, signal_rank)) + 1j*rng.uniform(-1, 1, size = (dim, signal_rank))
-        cov_signal = signal_basis @ signal_basis.conj().T
-        U = spstat.unitary_group.rvs(dim, random_state=rng)
-        cov_signal = U @ cov_signal @ U.conj().T
-    else:
-        noise_basis = rng.uniform(-1, 1, size = (dim, 2*dim))
-        cov_noise = noise_basis @ noise_basis.T / (2*dim)
-        cov_noise += 1e-2 * np.eye(dim)
-
-        U = spstat.ortho_group.rvs(dim, random_state=rng)
-        cov_noise = U @ cov_noise @ U.T
-
-        signal_basis = rng.uniform(-1, 1, size = (dim, signal_rank))
-        cov_signal = signal_basis @ signal_basis.T
-        U = spstat.ortho_group.rvs(dim, random_state=rng)
-        cov_signal = U @ cov_signal @ U.T
-
-    cov_signal = cov_signal * snr / np.trace(cov_signal)
-    cov_noise = cov_noise / np.trace(cov_noise)
-    total_factor = dim / (np.trace(cov_signal) + np.trace(cov_noise))
-    cov_signal = cov_signal * total_factor
-    cov_noise = cov_noise * total_factor
-
-    return cov_signal, cov_noise
-
-
 
 
 if __name__ == "__main__":

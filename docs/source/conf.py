@@ -14,7 +14,7 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath('../..'))
 sys.path.append(os.path.abspath("./_ext"))
-os.environ["NUMBA_DISABLE_JIT"] = '1'
+#os.environ["NUMBA_DISABLE_JIT"] = '1'
 
 
 #sys.path.insert(0, os.path.abspath('.'))
@@ -41,7 +41,7 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
     'sphinx.ext.napoleon',
-    'numbadoc',
+    #'numbadoc',
     #'numpydoc',
 ]
 napoleon_google_docstring = False

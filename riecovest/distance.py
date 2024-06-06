@@ -1,11 +1,10 @@
-"""Functions for computing distances between matrices. Most of the functions are distances between positive definite matrices, although some are for general matrices.
+"""Functions for computing distances between matrices. 
 
+Most of the functions are distances between positive definite matrices, although some are for general matrices.
 All operations are defined in jax, so that they can be used in algorithms requiring automatic differentiation.
 """
-
-
 import jax.numpy as jnp
-import matrix_operations as matop
+import riecovest.matrix_operations as matop
 
 
 def frob_sq(A, B):
@@ -89,7 +88,7 @@ def airm(A, B):
 def frob_gevd_weighted(A, B):
     """The frobenious distance between A and B, weighted by the generalized eigenvectors. 
 
-    Defined by $\lVert W (A - B) W^H \rVert_F$, where $W$ is the matrix of eigenvectors of the generalized eigenvalue decomposition of $A$ and $B$.
+    Defined by $lVert W (A - B) W^H rVert_F$, where $W$ is the matrix of eigenvectors of the generalized eigenvalue decomposition of $A$ and $B$.
     
     Parameters
     ----------
@@ -102,7 +101,7 @@ def frob_gevd_weighted(A, B):
     -------
     distance : float
         The distance between A and B in weighted Frobenius distance
-        
+
     Notes
     -----
     The defintion of the eigenvector matrix is in terms of the simultaneous diagonalization of $A$ and $B$.

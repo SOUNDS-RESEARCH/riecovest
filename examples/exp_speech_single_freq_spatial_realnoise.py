@@ -29,8 +29,6 @@ import aspcol.plot as aspplot
 import riecovest.covariance_estimation as covest
 import riecovest.random_matrices as rm
 
-import seaborn as sns
-
 def analyze_audio_signals(signal_stft, noise_stft, fig_folder):
     num_freq = signal_stft.shape[0]
     dim = signal_stft.shape[1]

@@ -6,11 +6,11 @@ The signal covariance matrix is assumed to be low-rank, while the noise covarian
 
 References
 ----------
-[brunnstroemRobust2024] J. Brunnström, M. Moonen, and F. Elvander, “Robust signal and noise covariance matrix estimation using Riemannian optimization,” presented at the European Signal Processing Conference (EUSIPCO), Sep. 2024
-[serizelLowrank2014] R. Serizel, M. Moonen, B. V. Dijk, and J. Wouters, “Low-rank approximation based multichannel Wiener filter algorithms for noise reduction with application in cochlear implants,” IEEE/ACM Transactions on Audio, Speech, and Language Processing, vol. 22, no. 4, pp. 785–799, Apr. 2014, doi: 10.1109/TASLP.2014.2304240.
+[brunnstroemRobust2024] J. Brunnström, M. Moonen, and F. Elvander, “Robust signal and noise covariance matrix estimation using Riemannian optimization,” presented at the European Signal Processing Conference (EUSIPCO), Sep. 2024 \n
+[serizelLowrank2014] R. Serizel, M. Moonen, B. V. Dijk, and J. Wouters, “Low-rank approximation based multichannel Wiener filter algorithms for noise reduction with application in cochlear implants,” IEEE/ACM Transactions on Audio, Speech, and Language Processing, vol. 22, no. 4, pp. 785–799, Apr. 2014, doi: 10.1109/TASLP.2014.2304240.\n
 [tylerDistributionfree1987] D. E. Tyler, “A distribution-free M-estimator of multivariate scatter,” The Annals of Statistics, vol. 15, no. 1, pp. 234–251, 1987.
-[ollilaComplex2012] E. Ollila, D. E. Tyler, V. Koivunen, and H. V. Poor, “Complex elliptically symmetric distributions: survey, new results and applications,” IEEE Transactions on Signal Processing, vol. 60, no. 11, pp. 5597–5625, Nov. 2012, doi: 10.1109/TSP.2012.2212433.
-[valrompaeyGEVD2018] R. Van Rompaey and M. Moonen, “GEVD based speech and noise correlation matrix estimation for multichannel Wiener filter based noise reduction,” in 2018 26th European Signal Processing Conference (EUSIPCO), Sep. 2018, pp. 2544–2548. doi: 10.23919/EUSIPCO.2018.8553109.
+[ollilaComplex2012] E. Ollila, D. E. Tyler, V. Koivunen, and H. V. Poor, “Complex elliptically symmetric distributions: survey, new results and applications,” IEEE Transactions on Signal Processing, vol. 60, no. 11, pp. 5597–5625, Nov. 2012, doi: 10.1109/TSP.2012.2212433. \n
+[valrompaeyGEVD2018] R. Van Rompaey and M. Moonen, “GEVD based speech and noise correlation matrix estimation for multichannel Wiener filter based noise reduction,” in 2018 26th European Signal Processing Conference (EUSIPCO), Sep. 2018, pp. 2544–2548. doi: 10.23919/EUSIPCO.2018.8553109. \n
 """
 
 import jax.numpy as jnp
@@ -20,8 +20,8 @@ import scipy.linalg as splin
 import pymanopt
 
 
-import distance as dist
-import matrix_operations as matop
+import riecovest.distance as dist
+import riecovest.matrix_operations as matop
 
 #====================================== COVARIANCE ESTIMATORS ======================================
 def scm(data):
@@ -82,7 +82,7 @@ def tyler_estimator(data, num_iter=20):
 
 #==================== NOISE PLUS SIGNAL COVARIANCE ESTIMATORS
 def est_gevd(Ry, Rn, rank, est_noise_cov=False):
-    """Estimate the signal covariance matrix using the GEVD method.
+    """Signal and noise covariance estimation using the GEVD method.
 
     Parameters
     ----------

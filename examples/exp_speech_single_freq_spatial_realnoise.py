@@ -150,18 +150,6 @@ def load_meshrir(sr):
 
     return ir_sig, ir_noise, pos_selected
 
-def load_single_audio():
-    dataset_path = pathlib.Path("c:/research/datasets/LibriSpeech/dev-clean")
-    for subpath in dataset_path.iterdir():
-        if subpath.is_dir():
-            for single_speaker_path in subpath.iterdir():
-                if single_speaker_path.is_dir():
-                    for audio_file_path in single_speaker_path.iterdir():
-                        if audio_file_path.suffix == ".flac":
-                            audio, sr = sf.read(audio_file_path)
-                            audio = audio[15000:25000]
-                            return audio, sr
-
 def wola_batch_analysis(signal, block_size):
     """Constructs the entire WOLA spectrum for a signal
     

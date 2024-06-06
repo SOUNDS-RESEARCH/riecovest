@@ -14,7 +14,7 @@ The code was developed as part of the paper J. Brunnström, M. Moonen, and F. El
 ```
 
 ## License
-The software is distributed under the MIT license. See the LICENSE file for more information. If you use this software in your research, please cite the following paper
+The software is distributed under the MIT license. See the LICENSE file for more information.
 
 ## Dependencies
 All obligatory dependencies are listed in requirements.txt, and can be installed with pip:

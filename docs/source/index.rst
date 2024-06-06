@@ -13,6 +13,8 @@ API Reference
    :toctree: _autosummary
    :template: new-module-template.rst
 
+   riecovest.distance
+   riecovest.matrix_operations
    riecovest.covariance_estimation
    riecovest.random_matrices
 

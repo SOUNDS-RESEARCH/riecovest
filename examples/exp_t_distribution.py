@@ -140,23 +140,10 @@ def estimate_all(noisy_sig, signal, noise, cov_samples_noisy_signal, cov_samples
     estimator = {}
     cov_sig = {}
     cov_noise = {}
-    #cov["wasserstein"], cov_noise["wasserstein"] = est_manifold_wasserstein(scm_noisy_sig, scm_noise, true_sig_rank)
-    
     cov_sig["subtract-scm"] = scm_noisy_sig - scm_noise
     cov_sig["gevd"] = covest.est_gevd(scm_noisy_sig, scm_noise, true_sig_rank)
     cov_sig["gevd tyler"] = covest.est_gevd(tem_noisy_sig, tem_noise, true_sig_rank)
-    #cov_sig["tyler-scale"], cov_noise["tyler-scale"] = covest.est_manifold_tylers_with_scale_opt(cov_samples_noisy_signal, cov_samples_noise_only, true_sig_rank)
-    cov_sig["tyler"], cov_noise["tyler"] = covest.est_manifold_tylers_m_estimator(cov_samples_noisy_signal, cov_samples_noise_only, true_sig_rank)#, start_value = (cov_sig["gevd"], scm_noise))
-    #cov_sig["tyler nonorm"], cov_noise["tyler nonorm"] = covest.est_manifold_tylers_m_estimator_nonorm(cov_samples_noisy_signal, cov_samples_noise_only, true_sig_rank)#, start_value = (cov_sig["gevd"], scm_noise))
-    #cov_sig["wishart"], cov_noise["wishart"] = covest.est_manifold_wishart(scm_noisy_sig, scm_noise, true_sig_rank, 12)#, start_value = (cov_sig["gevd"], scm_noise))
-    #cov_sig["airm"], cov_noise["airm"] = covest.est_manifold_airm(scm_noisy_sig, scm_noise, true_sig_rank)#, start_value = (cov_sig["gevd"], scm_noise))
-    
-    #cov_sig["frob"], cov_noise["frob"] = covest.est_manifold_frob(scm_noisy_sig, scm_noise, true_sig_rank)
-    #cov_sig["frob_whitened"], cov_noise["frob_whitened"] = est_manifold_frob_whitened(scm_noisy_sig, scm_noise, true_sig_rank)
-    #cov_sig["frob_whitened_opt"], cov_noise["frob_whitened_opt"] = est_manifold_frob_whitened_by_true_noise(scm_noisy_sig, scm_noise, true_sig_rank)
-    
-    #cov_sig["wishart"] *= np.trace(cov_sig["frob"]) / np.trace(cov_sig["wishart"])
-    #cov_noise["wishart"] *= np.trace(cov_noise["frob"]) / np.trace(cov_noise["wishart"])
+    cov_sig["tyler"], cov_noise["tyler"] = covest.est_manifold_tylers_m_estimator(cov_samples_noisy_signal, cov_samples_noise_only, true_sig_rank)
 
     cov_noise["scm"] = scm_noise
     return cov_sig, cov_noise

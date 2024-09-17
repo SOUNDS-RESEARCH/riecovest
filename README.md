@@ -1,5 +1,6 @@
 # Riemannian covariance estimation (riecovest)
-This is a package for estimation of signal covariance matrices from noisy signal and noise-only data. The package is using pymanopt to perform optimization over the specified Riemannian manifolds. More info can be found in the [documentation](https://sounds-research.github.io/riecovest/)
+This is a package for estimation of signal covariance matrices from noisy signal and noise-only data. The package is using pymanopt to perform optimization over the specified Riemannian manifolds. 
+**[More info and complete API documentation](https://sounds-research.github.io/riecovest/)**
 
 The code was developed as part of the paper J. Brunnström, M. Moonen, and F. Elvander, “Robust signal and noise covariance matrix estimation using Riemannian optimization,” presented at the European Signal Processing Conference (EUSIPCO), Sep. 2024. The examples folder contains code to replicate the results from the paper. If you use this software in your research, please cite the paper. 
 ```
@@ -16,7 +17,12 @@ The code was developed as part of the paper J. Brunnström, M. Moonen, and F. El
 ## License
 The software is distributed under the MIT license. See the LICENSE file for more information.
 
-## Dependencies
+## Installation
+The package does not exist on PyPi. It can be installed by cloning the repository and installing via pip from the downloaded folder. 
+```
+pip install ./path/to/cloned/aspcol/folder
+```
+
 All obligatory dependencies are listed in requirements.txt, and can be installed with pip:
 ```
 pip install -r requirements.txt

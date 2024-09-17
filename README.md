@@ -2,7 +2,7 @@
 This is a package for estimation of signal covariance matrices from noisy signal and noise-only data. The package is using pymanopt to perform optimization over the specified Riemannian manifolds. 
 **[More info and complete API documentation](https://sounds-research.github.io/riecovest/)**
 
-The code was developed as part of the paper J. Brunnström, M. Moonen, and F. Elvander, “Robust signal and noise covariance matrix estimation using Riemannian optimization,” presented at the European Signal Processing Conference (EUSIPCO), Sep. 2024. The examples folder contains code to replicate the results from the paper. If you use this software in your research, please cite the paper. 
+The code was developed as part of the paper [J. Brunnström, M. Moonen, and F. Elvander, “Robust signal and noise covariance matrix estimation using Riemannian optimization,” presented at the European Signal Processing Conference (EUSIPCO), Sep. 2024](https://eurasip.org/Proceedings/Eusipco/Eusipco2024/pdfs/0000291.pdf). The examples folder contains code to replicate the results from the paper. If you use this software in your research, please cite the paper. 
 ```
 @inproceedings{brunnstromRobust2024,
   title = {Robust Signal and Noise Covariance Matrix Estimation Using {{Riemannian}} Optimization},

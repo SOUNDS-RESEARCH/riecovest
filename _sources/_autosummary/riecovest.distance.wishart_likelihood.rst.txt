@@ -1,0 +1,6 @@
+riecovest.distance.wishart\_likelihood
+======================================
+
+.. currentmodule:: riecovest.distance
+
+.. autofunction:: wishart_likelihood

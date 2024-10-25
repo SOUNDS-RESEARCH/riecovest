@@ -1,0 +1,6 @@
+riecovest.distance.tyler\_log\_likelihood\_no\_normalization
+============================================================
+
+.. currentmodule:: riecovest.distance
+
+.. autofunction:: tyler_log_likelihood_no_normalization

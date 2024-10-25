@@ -1,0 +1,6 @@
+riecovest.distance.airm
+=======================
+
+.. currentmodule:: riecovest.distance
+
+.. autofunction:: airm

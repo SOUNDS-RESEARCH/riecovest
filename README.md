@@ -1,5 +1,5 @@
 # Riemannian covariance estimation (riecovest)
-This is a package for estimation of signal covariance matrices from noisy signal and noise-only data. The package is using pymanopt to perform optimization over the specified Riemannian manifolds. 
+This is a package for estimation of signal covariance matrices from noisy signal and noise-only data. The package is using pymanopt to perform optimization over Riemannian manifolds, using JAX to as a backend for automatic differentiation.
 
 **[More info and complete API documentation](https://sounds-research.github.io/riecovest/)**
 
@@ -20,23 +20,20 @@ The code was developed as part of the paper [J. Brunnström, M. Moonen, and F. E
 The software is distributed under the MIT license. See the LICENSE file for more information.
 
 ## Installation
-The package does not exist on PyPi. It can be installed by cloning the repository and installing via pip from the downloaded folder. 
+The package can be installed via pip from the PyPi repository:
 ```
-pip install ./path/to/cloned/aspcol/folder
+pip install riecovest
+```
+Alternatively, clone this repository and install the package using:
+```
+pip install path/to/riecovest
 ```
 
-All obligatory dependencies are listed in requirements.txt, and can be installed with pip:
-```
-pip install -r requirements.txt
-```
-
-To run the examples, a longer list of dependencies is needed. The list of dependencies can be found in requirements_examples.txt, and can be installed with pip:
+To run the examples "reproduce_covest_t_distribution.py" and "reproduce_spatial_filtering.py" which reproduces the results from the aforementioned paper, a longer list of dependencies is needed. This list of dependencies can be found in requirements_examples.txt, and can be installed with pip:
 ```
 pip install -r requirements_examples.txt
 ```
-Running the examples also requires an additional non-standard dependency [aspcol](https://github.com/SOUNDS-RESEARCH/aspcore). The package is not available on PyPi, so it has to be installed manually. The package can be installed by cloning the repository and installing via pip from the downloaded folder. 
-
-One of the examples also makes use of the [MeshRIR](https://www.sh01.org/MeshRIR/) dataset. It must be downloaded from the original source along with the dataset loader irutilities.py. 
+The example "reproduce_spatial_filtering.py" also makes use of the [MeshRIR](https://www.sh01.org/MeshRIR/) dataset. It must be downloaded from the original source along with the dataset loader irutilities.py. The dataset loader must be placed in the same folder as the example script.
 
 ## Acknowledgements
 The software has been developed during a PhD project as part of the [SOUNDS ETN](https://www.sounds-etn.eu) at KU Leuven. The SOUNDS project has recieved funding from the European Union's Horizon 2020 research and innovation programme under grant agreement No. 956369.

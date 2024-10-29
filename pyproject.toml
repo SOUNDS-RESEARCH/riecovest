@@ -9,7 +9,7 @@ authors = [
     {name = "Jesper Brunnström", email = "jesper_brunnstrom@hotmail.com"}
 ]
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.11"
 classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",

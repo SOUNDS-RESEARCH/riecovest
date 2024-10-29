@@ -1,0 +1,6 @@
+riecovest.random\_matrices.sample\_real\_gaussian
+=================================================
+
+.. currentmodule:: riecovest.random_matrices
+
+.. autofunction:: sample_real_gaussian

@@ -1,0 +1,6 @@
+riecovest.distance.frob\_gevd\_weighted
+=======================================
+
+.. currentmodule:: riecovest.distance
+
+.. autofunction:: frob_gevd_weighted

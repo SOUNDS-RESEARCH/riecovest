@@ -1,0 +1,6 @@
+riecovest.distance.frob\_sq
+===========================
+
+.. currentmodule:: riecovest.distance
+
+.. autofunction:: frob_sq

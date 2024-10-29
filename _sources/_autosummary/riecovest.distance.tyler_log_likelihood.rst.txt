@@ -1,0 +1,6 @@
+riecovest.distance.tyler\_log\_likelihood
+=========================================
+
+.. currentmodule:: riecovest.distance
+
+.. autofunction:: tyler_log_likelihood

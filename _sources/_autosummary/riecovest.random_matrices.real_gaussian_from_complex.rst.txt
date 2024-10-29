@@ -1,0 +1,6 @@
+riecovest.random\_matrices.real\_gaussian\_from\_complex
+========================================================
+
+.. currentmodule:: riecovest.random_matrices
+
+.. autofunction:: real_gaussian_from_complex

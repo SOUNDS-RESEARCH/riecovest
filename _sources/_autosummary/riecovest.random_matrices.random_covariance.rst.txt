@@ -1,0 +1,6 @@
+riecovest.random\_matrices.random\_covariance
+=============================================
+
+.. currentmodule:: riecovest.random_matrices
+
+.. autofunction:: random_covariance

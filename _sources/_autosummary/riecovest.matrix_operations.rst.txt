@@ -1,0 +1,31 @@
+﻿riecovest.matrix\_operations
+============================
+
+.. automodule:: riecovest.matrix_operations
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+   
+      generalized_eigh
+      matrix_sqrt
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+

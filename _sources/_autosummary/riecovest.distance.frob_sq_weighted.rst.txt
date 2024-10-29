@@ -1,0 +1,6 @@
+riecovest.distance.frob\_sq\_weighted
+=====================================
+
+.. currentmodule:: riecovest.distance
+
+.. autofunction:: frob_sq_weighted

@@ -1,0 +1,37 @@
+﻿riecovest.random\_matrices
+==========================
+
+.. automodule:: riecovest.random_matrices
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+   
+      random_covariance
+      random_signal_and_noise_covariance
+      real_gaussian_from_complex
+      sample_complex_gaussian
+      sample_complex_t_distribution
+      sample_elliptic_distribution
+      sample_real_gaussian
+      sample_real_t_distribution
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+

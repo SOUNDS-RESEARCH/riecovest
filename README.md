@@ -29,9 +29,9 @@ Alternatively, clone this repository and install the package using:
 pip install path/to/riecovest
 ```
 
-To run the examples "reproduce_covest_t_distribution.py" and "reproduce_spatial_filtering.py" which reproduces the results from the aforementioned paper, a longer list of dependencies is needed. This list of dependencies can be found in requirements_examples.txt, and can be installed with pip:
+To run the examples "reproduce_covest_t_distribution.py" and "reproduce_spatial_filtering.py" which reproduces the results from the aforementioned paper, a longer list of dependencies is needed. These can be installed with pip using:
 ```
-pip install -r requirements_examples.txt
+pip install riecovest[examples]
 ```
 The example "reproduce_spatial_filtering.py" also makes use of the [MeshRIR](https://www.sh01.org/MeshRIR/) dataset. It must be downloaded from the original source along with the dataset loader irutilities.py. The dataset loader must be placed in the same folder as the example script.
 

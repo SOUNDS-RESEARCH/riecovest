@@ -2,12 +2,9 @@
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools.packages.find]
-where = ["riecovest"]
-
 [project]
 name = "riecovest"
-version = "0.0.1"
+version = "0.0.2"
 authors = [
     {name = "Jesper Brunnström", email = "jesper_brunnstrom@hotmail.com"}
 ]
@@ -23,6 +20,15 @@ dependencies = [
     "scipy",
     "jax",
     "pymanopt",
+]
+
+[project.optional-dependencies]
+examples = [
+    "pandas",
+    "soundfile",
+    "seaborn",
+    "seaborn_qqplot",
+    "matplotlib",
 ]
 
 [project.urls]

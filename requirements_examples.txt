@@ -1,9 +1,0 @@
-numpy
-scipy
-jax
-pymanopt
-pandas
-soundfile
-seaborn
-seaborn_qqplot
-matplotlib

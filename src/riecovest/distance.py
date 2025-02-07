@@ -4,7 +4,11 @@ Most of the functions are distances between positive definite matrices, although
 All operations are defined in jax, so that they can be used in algorithms requiring automatic differentiation.
 """
 import jax.numpy as jnp
+import jax
 import riecovest.matrix_operations as matop
+
+import aspcore.matrices_jax as aspmat
+from functools import partial
 
 
 def frob_sq(A, B):
@@ -85,7 +89,40 @@ def airm(A, B):
 
 
 
-def frob_gevd_weighted(A, B):
+@partial(jax.jit, static_argnames=["rank"])
+def frob_gevd_weighted(A, B, rank="full"):
+    """The frobenious distance between A and B, weighted by the generalized eigenvectors. 
+
+    Defined by $lVert W (A - B) W^H rVert_F$, where $W$ is the matrix of eigenvectors of the generalized eigenvalue decomposition of $A$ and $B$.
+    
+    Parameters
+    ----------
+    A : ndarray of shape (M, M)
+        Positive semi-definite matrix
+    B : ndarray of shape (M, M)
+        Positive definite matrix
+
+    Returns
+    -------
+    distance : float
+        The distance between A and B in weighted Frobenius distance
+
+    Notes
+    -----
+    The defintion of the eigenvector matrix is in terms of the simultaneous diagonalization of $A$ and $B$.
+    $W A W^H = \Sigma$
+    $W B W^H = I$
+
+    The distance is equivalent to \lVert \Sigma - I \rVert_F, which is just the sum of the squared 
+    differences of the eigenvalues from 1.
+    """
+    eigvals = matop.generalized_eigvalsh(A, B)
+    if rank != "full":
+        eigvals = jnp.flip(eigvals, axis=-1)[:rank] # only take the rank largest eigenvalues
+
+    return jnp.sqrt(jnp.sum((eigvals - jnp.ones_like(eigvals))**2))
+
+def frob_gevd_weighted_fullrank(A, B):
     """The frobenious distance between A and B, weighted by the generalized eigenvectors. 
 
     Defined by $lVert W (A - B) W^H rVert_F$, where $W$ is the matrix of eigenvectors of the generalized eigenvalue decomposition of $A$ and $B$.
@@ -141,11 +178,11 @@ def wishart_likelihood(mat_variable, cov, N):
     f1 = jnp.linalg.det(cov)**(-N)
     f2 = jnp.exp(-jnp.trace(jnp.linalg.solve(cov, mat_variable)))
     l = f1 * f2
-    if (jnp.abs(jnp.imag(l)) / jnp.abs(jnp.real(l))) > 1e-10:
-        print(f"warning: more than 1e-10 imaginary part for wishart likelihood")
+    #if (jnp.abs(jnp.imag(l)) / jnp.abs(jnp.real(l))) > 1e-10:
+    #    print(f"warning: more than 1e-10 imaginary part for wishart likelihood")
     return jnp.real(l)
 
-def wishart_log_likelihood(mat_variable, cov, N):
+def wishart_log_likelihood(mat_variable, cov, N, regularization = 1e6):
     """Wishart log likelihood function.
 
     It is not a true likelihood, since the mass is not 1. It is however proportional to true likelihood with regards to the covariance matrix. Anything constant with regards to the covariance is not taken into account. Therefore, the maximum likelihood estimator can be found by maximizing this function.
@@ -165,11 +202,16 @@ def wishart_log_likelihood(mat_variable, cov, N):
         The log likelihood of the data given the covariance matrix
     """
     M = mat_variable.shape[-1]
+    #mat_variable = mat_variable * N
+
+    #mat_variable = mat_variable #/ np.sqrt(N)
+    #cov = cov / N
+    cov = aspmat.regularize_matrix_with_condition_number(cov, regularization)
     f1 = -N * jnp.log(jnp.linalg.det(cov))
     f2 = -jnp.trace(jnp.linalg.solve(cov, mat_variable))
     l = f1 + f2
-    if (jnp.abs(jnp.imag(l)) / jnp.abs(jnp.real(l))) > 1e-10:
-        print(f"warning: more than 1e-10 imaginary part for wishart likelihood")
+    # if (jnp.abs(jnp.imag(l)) / jnp.abs(jnp.real(l))) > 1e-10:
+    #     print(f"warning: more than 1e-10 imaginary part for wishart likelihood")
     return jnp.real(l)
 
 

@@ -54,3 +54,27 @@ def generalized_eigh(A, B):
     eigenvectors_original = jnp.conj(L_inv.T) @ eigenvectors_transformed
     return eigenvalues, eigenvectors_original
 
+
+def generalized_eigvalsh(A, B):
+    """Computes the generalized eigenvalue decomposition of a pair of positive semidefinite matrices.
+    
+    This can be used if only the eigenvalues are of interest, and not the eigenvectors.
+    Returns the same as scipy.linalg.eigvalsh(A, B)
+
+    Parameters
+    ----------
+    A : ndarray of shape (M, M)
+        Hermitian matrix
+    B : ndarray of shape (M, M)
+        Positive definite matrix
+
+    Returns
+    -------
+    eigenvalues : ndarray of shape (M,)
+        Eigenvalues in ascending order
+    """
+    L = jnp.linalg.cholesky(B)
+    L_inv = jnp.linalg.inv(L)
+    C = L_inv @ A @ jnp.conj(L_inv.T)
+    eigenvalues = jnp.linalg.eigvalsh(C)
+    return eigenvalues

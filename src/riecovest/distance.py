@@ -84,7 +84,7 @@ def airm(A, B):
     distance : float
         The distance between A and B in AIRM distance
     """
-    eigvals, _ = matop.generalized_eigh(A, B)
+    eigvals = matop.generalized_eigvalsh(A, B)
     return jnp.real(jnp.sqrt(jnp.sum(jnp.log(eigvals)**2)))
 
 

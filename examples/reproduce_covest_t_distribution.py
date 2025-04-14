@@ -372,16 +372,16 @@ def run_exp_over_degrees_of_freedom(base_fig_folder):
     fig_folder.mkdir()
 
     # === Parameters used in the paper ===
-    # dim = 10
-    # rank = 3
-    # num_samples = 20
-    # dof = [1, 2, 3, 4, 5, 10, 20, 50]
+    dim = 10
+    rank = 3
+    num_samples = 20
+    dof = [1, 2, 3, 4, 5, 10, 20, 50]
 
     # === Parameters for a fast test === 
-    dim = 4
-    rank = 2
-    num_samples = 3
-    dof = [2, 5, 20]
+    # dim = 4
+    # rank = 2
+    # num_samples = 3
+    # dof = [2, 5, 20]
 
     print(f"Degrees of freedom: {dof}")
     print(f"Number of monte carlo samples: {num_samples}")

@@ -860,22 +860,22 @@ def run_full_speech_exp():
     fig_folder.mkdir()
 
     # === Parameters used in the paper ===
-    # num_cov_data = 64
-    # num_data = 1000
-    # snr_db = 10
-    # snr_lin = 10**(snr_db / 10)
-    # dim = 5
-    # rank = 1
-    # noise_factor = np.logspace(1, 5, 9).tolist()
-
-    # === Parameters for a comparatively fast test === 
-    num_cov_data = 8
-    num_data = 32
+    num_cov_data = 64
+    num_data = 1000
     snr_db = 10
     snr_lin = 10**(snr_db / 10)
     dim = 5
     rank = 1
-    noise_factor = np.logspace(1, 5, 3).tolist()
+    noise_factor = np.logspace(1, 5, 9).tolist()
+
+    # === Parameters for a comparatively fast test === 
+    # num_cov_data = 8
+    # num_data = 32
+    # snr_db = 10
+    # snr_lin = 10**(snr_db / 10)
+    # dim = 5
+    # rank = 1
+    # noise_factor = np.logspace(1, 5, 3).tolist()
 
     rng = np.random.default_rng(1234564354)
 

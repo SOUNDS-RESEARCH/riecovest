@@ -21,13 +21,13 @@ from seaborn_qqplot import pplot
 
 import matplotlib.pyplot as plt
 
-import aspcol.distance as aspdist
-import aspcol.filterclasses as fc
-import aspcol.utilities as utils
+import aspcore.filter as fc
+import aspcore.utilities as utils
 import aspcol.plot as aspplot
 
 import riecovest.covariance_estimation as covest
 import riecovest.random_matrices as rm
+import riecovest.distance as dist
 
 def analyze_audio_signals(signal_stft, noise_stft, fig_folder):
     num_freq = signal_stft.shape[0]
@@ -49,7 +49,7 @@ def analyze_audio_signals(signal_stft, noise_stft, fig_folder):
     for ax in axes:
         ax.legend()
         aspplot.set_basic_plot_look(ax)
-    aspplot.output_plot("tikz", fig_folder, "covariance_eigenvalues", keep_only_latest_tikz=False)
+    aspplot.save_plot("pdf", fig_folder, "covariance_eigenvalues")
 
     fig, axes = plt.subplots(2,1)
     axes[0].set_title("Signal eigenvalues")
@@ -61,7 +61,7 @@ def analyze_audio_signals(signal_stft, noise_stft, fig_folder):
     for ax in axes:
         ax.legend()
         aspplot.set_basic_plot_look(ax)
-    aspplot.output_plot("tikz", fig_folder, "covariance_eigenvalues_db", keep_only_latest_tikz=False)
+    aspplot.save_plot("pdf", fig_folder, "covariance_eigenvalues_db")
 
     num_plots = 2
     jump = num_freq//num_plots
@@ -72,10 +72,6 @@ def analyze_audio_signals(signal_stft, noise_stft, fig_folder):
 
         sig_seq = np.real(signal_stft[f, 0, :])
         qq_against_gaussian(sig_seq, fig_folder, f"_signal_freqidx_{f}")
-    
-
-    #t_dist_fit_over_freqs(noise_stft, fig_folder, "noise")
-    #t_dist_fit_over_freqs(signal_stft, fig_folder, "signal")
 
 def t_dist_fit_over_freqs(stft, fig_folder, plot_name= ""):
     df = np.zeros(stft.shape[0])
@@ -95,7 +91,7 @@ def t_dist_fit_over_freqs(stft, fig_folder, plot_name= ""):
     for ax in axes:
         ax.set_xlabel("Frequency bin index")
         aspplot.set_basic_plot_look(ax)
-    aspplot.output_plot("tikz", fig_folder, f"t_fit_over_freqs_{plot_name}", keep_only_latest_tikz=False)
+    aspplot.save_plot("pdf", fig_folder, f"t_fit_over_freqs_{plot_name}")
 
 def qq_against_gaussian(seq, fig_folder, plot_name=""):
     #noise_mean, noise_std = spstat.norm.fit(seq)
@@ -103,7 +99,7 @@ def qq_against_gaussian(seq, fig_folder, plot_name=""):
     
     plt_object = pplot(pd.DataFrame({"data" : seq}), x="data", y=gaussian_dist.dist, kind='qq', height=4, aspect=2, display_kws={"identity":True})
     
-    aspplot.output_plot("tikz", fig_folder, f"qq_gaussian{plot_name}", keep_only_latest_tikz=False)
+    aspplot.save_plot("pdf", fig_folder, f"qq_gaussian{plot_name}")
 
 def resample_multichannel(ir, ratio):
     if ir.ndim == 3:
@@ -120,31 +116,18 @@ def load_meshrir(sr):
     orig_sr = 48000
     ratio = sr / orig_sr
 
-    #path_to_data_folder = pathlib.Path("c:/research/datasets/S32-M441_npy")
-
     pos_mic, pos_src, ir_hires = irutilities.loadIR(MESHRIR_FOLDER)
     pos_mic = -pos_mic
     ir_hires = ir_hires[(0,19,21),...]
 
-    # x_lim = [-0.21, 0.21]
-    # y_lim = [-0.21, 0.21]
-    # z_lim = [-0.21, 0.21]
-    # x_select = np.logical_and(x_lim[0] < pos_mic[:,0], pos_mic[:,0] < x_lim[1])
-    # y_select = np.logical_and(y_lim[0] < pos_mic[:,1], pos_mic[:,1] < y_lim[1])
-    # z_select = np.logical_and(z_lim[0] < pos_mic[:,2], pos_mic[:,2] < z_lim[1])
-    # select = np.logical_and(np.logical_and(x_select, y_select), z_select)
-    # ir_hires_selected = ir_hires[select,:]
     mic_idxs = np.array([1, 3, 19, 23, 25])
     ir_hires_selected = ir_hires[:,mic_idxs,:]
     pos_selected = pos_mic[mic_idxs,:]
 
-    # pos_selected = pos_mic[select,:]
     ir = []
     for i in range(ir_hires.shape[0]):
         ir.append(resample_multichannel(ir_hires_selected[i,:,:], ratio))
     ir = np.stack(ir, axis=0)
-    #mean_power = np.mean(np.sum(ir**2, axis=-1))
-    #ir /= np.sqrt(mean_power)
     ir_sig = ir[0:1,:,:]
     ir_noise = ir[1:,:,:]
 
@@ -209,7 +192,7 @@ def wola_batch_synthesis(spec, block_size):
     return signal
 
 def load_impulsive_noise(dim, sr):
-    noise_path = pathlib.Path(__file__).parent.joinpath("data").joinpath("handling_noise_long")
+    noise_path = pathlib.Path(__file__).parent.parent.joinpath("data").joinpath("handling_noise_long")
     noise_rec = []
     for i in range(1, dim+1):
         noise_single, sr_orig = sf.read(noise_path.joinpath(f"handling_noise_0{i}.wav"))
@@ -265,12 +248,6 @@ def gen_data(dim, sig_rank, snr, num_cov_data, num_data, fig_folder, noise_facto
     rir_signal, rir_noise, pos_mic = load_meshrir(sr)
     speech_sig = rm.sample_real_gaussian(np.zeros((1)), np.ones((1,1)), rng, sig_len_orig)
     noise_src = rng.normal(loc = 0, scale=1, size=(rir_noise.shape[0],speech_sig.shape[-1]))
-    #speech_sig = load_speech(sr)
-    #noise_factor = 10 # for speech
-    #noise_factor = 1e4 # for gaussian
-    #noise_impulsive = load_impulsive_noise(dim, sr) * noise_factor
-    #noise_impulsive = np.tile(noise_impulsive, (1, 10))
-    
     
     signal = propagate(rir_signal, speech_sig)
     noise_spatial = propagate(rir_noise, noise_src)
@@ -286,15 +263,6 @@ def gen_data(dim, sig_rank, snr, num_cov_data, num_data, fig_folder, noise_facto
     #base_impulsive_noise = rm.sample_real_t_distribution(np.zeros((dim)), scatter_noise, rng, sig_len, degrees_of_freedom=1)
     noise_impulsive_all = [base_impulsive_noise * nf for nf in noise_factor]# *10
 
-    # use *10 for degrees = 3
-    # use *1 for degrees = 2
-    # use 1e-2 for degrees = 1
-     #* 1e-4
-    #signal = signal[:,:noise_impulsive.shape[-1]]
-    #if signal.shape[-1] < noise_impulsive.shape[-1]:
-    #    noise_impulsive = noise_impulsive[:,:signal.shape[-1]]
-
-    #signal /= np.sqrt(np.mean(signal**2))
     signal_power_mean = np.mean(signal**2)
 
     noise = [noise_spatial + ni for ni in noise_impulsive_all]
@@ -310,7 +278,6 @@ def gen_data(dim, sig_rank, snr, num_cov_data, num_data, fig_folder, noise_facto
         "spatial noise variance" : np.mean(noise_spatial**2), 
         "total noise power mean" : noise_power_mean,
         "noise_factor" : noise_factor,
-        #"noise_factor" : noise_factor
     }
     with open(fig_folder.joinpath("td_signal_info.json"), "w") as f:
         json.dump(tdsig_info, f, indent=4)
@@ -326,7 +293,7 @@ def gen_data(dim, sig_rank, snr, num_cov_data, num_data, fig_folder, noise_facto
         ax.set_xlabel("Samples")
         ax.set_ylabel("Amplitude")
         ax.legend(loc="upper right")
-    aspplot.output_plot("pdf", fig_folder, "time_domain_signals", keep_only_latest_tikz=False)
+    aspplot.save_plot("pdf", fig_folder, "time_domain_signals")
 
     # ========== COMBINED SIGNAL ============    
     noisy_sig = [signal + ns for ns in noise]
@@ -341,23 +308,14 @@ def gen_data(dim, sig_rank, snr, num_cov_data, num_data, fig_folder, noise_facto
     [plot_stft(ns_stft, f"noise_nf{noise_factor[i]}", fig_folder) for i, ns_stft in enumerate(noise_stft)]
     [plot_stft(ns_stft, f"noisy_sig_nf{noise_factor[i]}", fig_folder) for i, ns_stft in enumerate(noisy_sig_stft)]
 
-    #analyze_audio_signals(signal_stft, noise_stft, fig_folder)
-
-
-    pass
-
     noise_stft = np.stack([ns[freq_idx,...] for ns in noise_stft], axis=0)
     noisy_sig_stft = np.stack([ns[freq_idx,...] for ns in noisy_sig_stft], axis=0)
     signal_stft = np.tile(signal_stft[freq_idx:freq_idx+1,...], (noise_stft.shape[0], 1,1))
-    #noise_imp_stft = [wola_batch_analysis(ni, block_size) for ni in noise_impulsive_all]
-    #plot_stft(noise_imp_stft, "noise_impulsive", fig_folder)
-
 
     num_freqs = signal_stft.shape[0]
     num_blocks = signal_stft.shape[-1]
     num_segments_total = num_blocks // num_blocks_per_segment
-    #remainder = num_blocks % num_blocks_per_segment
-    
+
     cov_samples_noise_only = np.zeros((num_segments_total, num_freqs, dim, num_blocks_per_segment), dtype=complex)
     cov_samples_signal_only = np.zeros((num_segments_total, num_freqs, dim, num_blocks_per_segment), dtype=complex)
     cov_samples_noisy_signal = np.zeros((num_segments_total, num_freqs, dim, num_blocks_per_segment), dtype=complex)
@@ -368,7 +326,6 @@ def gen_data(dim, sig_rank, snr, num_cov_data, num_data, fig_folder, noise_facto
                                             noise_stft[...,offset+i*num_blocks_per_segment:offset+(i+1)*num_blocks_per_segment]
         cov_samples_noise_only[i,...] = noise_stft[...,offset+i*num_blocks_per_segment:offset+(i+1)*num_blocks_per_segment]
     
-    #num_segments = num_segments_total // 2
     cov_samples_noise_only = cov_samples_noise_only[num_segments:,...]
     cov_samples_signal_only = cov_samples_signal_only[:num_segments,...]
     cov_samples_noisy_signal = cov_samples_noisy_signal[:num_segments,...]
@@ -383,20 +340,11 @@ def gen_data(dim, sig_rank, snr, num_cov_data, num_data, fig_folder, noise_facto
     cov_signal = np.stack(cov_signal, axis=0)
     cov_noise = np.stack(cov_noise, axis=0)
 
-
     cov_samples_noise_only = cov_samples_noise_only[:num_segments,...]
     cov_samples_noisy_signal = cov_samples_noisy_signal[:num_segments,...]
     cov_signal = cov_signal[:num_segments,...]
     cov_noise = cov_noise[:num_segments,...]
    
-    #cov_signal = np.stack([covest.scm(signal_stft[f,:,offset:offset+800]) for f in range(signal_stft.shape[0])], axis=0)
-    #cov_noise = np.stack([covest.scm(noise_stft[f,:,offset:]) for f in range(signal_stft.shape[0])], axis=0)
-    #cov_noise = np.zeros((freqs.shape[-1], dim, dim))
-    #cov_noise[...] = np.eye(dim)[None,:,:] * signal_power_mean / snr
-    
-
-    #cov_samples_noisy_signal = cov_samples_signal + cov_samples_noise
-    #noisy_sig = noise + signal
     return noisy_sig, signal, noise, cov_samples_noisy_signal, cov_samples_noise_only, cov_samples_signal_only, cov_signal, cov_noise, freqs
 
 
@@ -416,10 +364,9 @@ def plot_stft(spec, plot_name, fig_folder):
 
     for ax in axes:
         ax.set_aspect("auto")
-        #aspplot.set_basic_plot_look(ax)
         ax.set_xlabel("Time (block)")
         ax.set_ylabel("Frequency (index)")
-    aspplot.output_plot("tikz", fig_folder, f"stft_{plot_name}", keep_only_latest_tikz=False)
+    aspplot.save_plot("pdf", fig_folder, f"stft_{plot_name}")
 
 def show_matrices(mat_dict, fig_folder, name = ""):
     fig, axes = plt.subplots(len(mat_dict), 3, figsize=(8, 3*len(mat_dict)))
@@ -436,7 +383,7 @@ def show_matrices(mat_dict, fig_folder, name = ""):
         axes[i,2].set_title(f"Abs: {est_name}")
         
     
-    aspplot.output_plot("pdf", fig_folder, f"matrices_{name}")
+    aspplot.save_plot("pdf", fig_folder, f"matrices_{name}")
 
 def show_eigenvalues(mat_dict, fig_folder, name = ""):
 
@@ -448,7 +395,7 @@ def show_eigenvalues(mat_dict, fig_folder, name = ""):
         ax.legend()
 
         aspplot.set_basic_plot_look(ax)
-    aspplot.output_plot("pdf", fig_folder, f"eigenvalues_{name}")
+    aspplot.save_plot("pdf", fig_folder, f"eigenvalues_{name}")
     
 def estimation_errors_all(cov_sig, cov_noise, true_signal_cov, true_noise_cov, fig_folder, plot_name=""):
     true_noisy_sig_cov = true_signal_cov + true_noise_cov
@@ -486,11 +433,11 @@ def estimation_errors(est, cov_true, full_rank, fig_folder, name):
         metrics["mse trace-normalized"][est_name] = np.linalg.norm(cov_est_trace_normalized - cov_true, ord="fro")**2
         metrics["nmse trace-normalized"][est_name] = np.linalg.norm(cov_est_trace_normalized - cov_true, ord="fro")**2 / np.linalg.norm(cov_true, ord="fro")**2
         #metrics["nmse trace-normalized (dB)"][est_name] = 10 * np.log10(metrics["nmse trace-normalized"][est_name])
-        metrics["corrmat_distance"][est_name] = aspdist.corr_matrix_distance(cov_est, cov_true).tolist()
+        metrics["corrmat_distance"][est_name] = dist.corr_matrix_distance(cov_est, cov_true).tolist()
 
         if full_rank:
-            metrics["airm"][est_name] = covest.airm(cov_est, cov_true).tolist()
-            metrics["kl divergence"][est_name] = aspdist.covariance_distance_kl_divergence(cov_est, cov_true).tolist()
+            metrics["airm"][est_name] = dist.airm(cov_est, cov_true).tolist()
+            metrics["kl divergence"][est_name] = dist.kl_divergence_gaussian(cov_est, cov_true).tolist()
 
     metrics_complex= {metric_name : {} for metric_name in metrics.keys()}
     for metric_name, metric_value in metrics.items():
@@ -519,8 +466,6 @@ def exp(noise_stft, signal_stft, noisy_sig_stft, cov_samples_noisy_signal, cov_s
     if rng is None:
         rng = np.random.default_rng(1234567)
 
-    #num_blocks = cov_samples_noisy_signal.shape[0]
-    #num_freqs = cov_samples_noisy_signal.shape[1]
     dim = cov_samples_noisy_signal.shape[0]
     num_cov_data = cov_samples_noisy_signal.shape[1]
     
@@ -532,9 +477,6 @@ def exp(noise_stft, signal_stft, noisy_sig_stft, cov_samples_noisy_signal, cov_s
     fig_folder.mkdir()
 
     sim_info = {}
-    #sim_info[f"Noise power"] = np.mean(np.abs(noise)**2)
-    #sim_info[f"Signal power"] = np.mean(np.abs(signal)**2)
-    #sim_info[f"Prior SNR (dB)"] = 10 * np.log10(np.mean(np.abs(signal)**2) / np.mean(np.abs(noise)**2))
     sim_info[f"Data points for cov estimation"] = num_cov_data
     sim_info[f"Dimension"] = dim
     sim_info[f"Signal rank"] = rank
@@ -543,7 +485,6 @@ def exp(noise_stft, signal_stft, noisy_sig_stft, cov_samples_noisy_signal, cov_s
         json.dump(sim_info, f, indent=4)
 
     # ========= SOLVE ESTIMATION PROBLEM BELOW HERE ============
-
     est_cov_sig, est_cov_noise = est_all_covariances(cov_samples_noisy_signal, cov_samples_noise_only, rank)
     est_cov_sig, est_cov_noise, cov_signal, cov_noise = normalize_cov_matrices(est_cov_sig, est_cov_noise, cov_signal, cov_noise)
     
@@ -552,8 +493,6 @@ def exp(noise_stft, signal_stft, noisy_sig_stft, cov_samples_noisy_signal, cov_s
     all_cov_noise = {**est_cov_noise}
     all_cov_noise["true"] = cov_noise
     
-    #estimation_errors(est_cov_sig, cov_signal, fig_folder, "signal_covariance")
-    #estimation_errors(est_cov_noise, cov_noise, fig_folder, "noise_covariance")
     estimation_errors_all(est_cov_sig, est_cov_noise, cov_signal, cov_noise, fig_folder, plot_name=f"")
     
     np.savez(fig_folder.joinpath("cov_sig"),  **all_cov_sig)
@@ -562,7 +501,6 @@ def exp(noise_stft, signal_stft, noisy_sig_stft, cov_samples_noisy_signal, cov_s
     if not faster_exp:
         show_matrices(all_cov_sig, fig_folder, f"signal_covariance")
         show_matrices(all_cov_noise, fig_folder, f"noise_covariance")
-        #show_rank(est_cov_sig, fig_folder, "signal_covariance")
         show_eigenvalues(all_cov_sig, fig_folder, f"signal")
         show_eigenvalues(all_cov_noise, fig_folder, f"noise")
 
@@ -603,7 +541,6 @@ def exp_spatial_filtering_single_freq(est_cov_sig, est_cov_noise, noisy_sig_stft
         W = splin.solve((est_sig + est_noise).T, est_sig.T).T
         if np.isnan(np.sum(W)):
             print(f"nan found")
-        #W *= W.shape[-1] / np.trace(W)
         mwf[est_name] = W
         noisy_sig_processed[est_name] = W @ noisy_sig_stft
         noise_processed[est_name] = W @ noise_stft
@@ -645,8 +582,6 @@ def exp_spatial_filtering_single_freq(est_cov_sig, est_cov_noise, noisy_sig_stft
         metrics_db[metric_name] = {k:10*np.log10(v) for k,v in metric_value.items()}
     with open(fig_folder.joinpath(f"eval_spatial_filtering_db.json"), "w") as f:
         json.dump(metrics_db, f, indent = 4)
-    #fig, axes = plt.subplots(3,len(mwf), figsize=(15, 5 * len(mwf)))
-
 
 
 
@@ -698,9 +633,6 @@ def analyze_monte_carlo_trial(base_fig_folder):
 
     for fdr in base_fig_folder.iterdir():
         if fdr.is_dir():
-            #if fdr.is_dir():
-            #    fig_folder = fdr
-            #    break
             cov_sig = np.load(fdr.joinpath("cov_sig.npz"))
             cov_sig = {k:v for k,v in cov_sig.items()}
             cov_sig_all.append(cov_sig)
@@ -755,9 +687,6 @@ def summarize_metrics(metric_list, fig_folder):
             metric_summary[est_name][f"{metric_name} : sample mean"] = np.mean(metric_value)
             metric_summary[est_name][f"{metric_name} : sample variance"] = np.var(metric_value)
             metric_summary[est_name][f"{metric_name} : variance of sample mean"] = metric_summary[est_name][f"{metric_name} : sample variance"]/ len(metric_value)
-            #metrics[name]["mse-mean"] = np.mean(mse)
-            #metrics[name]["mse-variance"] = np.var(mse)
-            #metrics[name]["mse-variance-of-sample-mean"] = metrics[name]["mse-variance"] / len(est)
     with open(fig_folder.joinpath("summary.json"), "w") as f:
         json.dump(metric_summary, f, indent=4)
     
@@ -777,7 +706,7 @@ def summarize_metrics(metric_list, fig_folder):
     ax.set_xlabel("Time segment")
     ax.set_ylabel("NMSE (dB)")
     aspplot.set_basic_plot_look(ax)
-    aspplot.output_plot("tikz", fig_folder, f"nmse_over_time", keep_only_latest_tikz=False)
+    aspplot.save_plot("pdf", fig_folder, f"nmse_over_time")
 
 def plot_parameter_exp(fig_folder):
     folders = []
@@ -806,8 +735,6 @@ def plot_parameter_exp(fig_folder):
 
     for sum_name, sum_dict in total_summary.items():
         fig, ax = plt.subplots(1,1, figsize=(8,6))
-        #if np.isnan(np.sum(sum_dict[f"{nm} : sample mean"])) or sum_dict[f"{nm} : variance of sample mean"]:
-
 
         for nm in algo_names:
             if np.isnan(np.sum(sum_dict[f"{nm} : sample mean"])):
@@ -830,7 +757,7 @@ def plot_parameter_exp(fig_folder):
         ax.set_xlabel(parameter_name)
         ax.set_ylabel(sum_name)
         aspplot.set_basic_plot_look(ax)
-        aspplot.output_plot("tikz", fig_folder, f"{sum_name}_{parameter_name}", keep_only_latest_tikz=False)
+        aspplot.save_plot("pdf", fig_folder, f"{sum_name}_{parameter_name}")
 
         fig, ax = plt.subplots(1,1, figsize=(8,6))
         for nm in algo_names:
@@ -857,7 +784,7 @@ def plot_parameter_exp(fig_folder):
         ax.set_xlabel(f"{parameter_name}")
         ax.set_ylabel(f"{sum_name} (dB)")
         aspplot.set_basic_plot_look(ax)
-        aspplot.output_plot("tikz", fig_folder, f"{sum_name}_{parameter_name}_db", keep_only_latest_tikz=False)
+        aspplot.save_plot("pdf", fig_folder, f"{sum_name}_{parameter_name}_db")
 
         if np.min(parameter_vals) > 0:
             log_param_vals = np.log10(parameter_vals)
@@ -886,7 +813,7 @@ def plot_parameter_exp(fig_folder):
             ax.set_xlabel(f"{parameter_name} (log10)")
             ax.set_ylabel(f"{sum_name} (dB)")
             aspplot.set_basic_plot_look(ax)
-            aspplot.output_plot("tikz", fig_folder, f"{sum_name}_{parameter_name}_logdb", keep_only_latest_tikz=False)
+            aspplot.save_plot("pdf", fig_folder, f"{sum_name}_{parameter_name}_logdb")
 
 def get_all_algo_names(total_summary):
     one_dict = total_summary[list(total_summary.keys())[0]]
@@ -941,19 +868,9 @@ def run_full_speech_exp():
 
     rng = np.random.default_rng(1234564354)
 
-    #noise_factor = np.logspace(-5, -1, 9).tolist()
     noise_factor = np.logspace(1, 5, 9).tolist()
-    #noise_factor = [10**(3), 10**(3), 10**(4), 10**(5)]
     freq_idx = 64
     noisy_sig, signal, noise, cov_samples_noisy_signal, cov_samples_noise_only, cov_samples_signal_only, cov_signal, cov_noise, freqs = gen_data(dim, rank, snr_lin, num_cov_data, num_data, fig_folder, noise_factor, freq_idx, rng)
-
-    
-    # cov_samples_noisy_signal = cov_samples_noisy_signal[:,freq_idx:freq_idx+1,...]
-    # cov_samples_noise_only = cov_samples_noise_only[:,freq_idx:freq_idx+1,...]
-    # cov_samples_signal_only = cov_samples_signal_only[:,freq_idx:freq_idx+1,...]
-    # cov_signal = cov_signal[:,freq_idx:freq_idx+1,...]
-    # cov_noise = cov_noise[:,freq_idx:freq_idx+1,...]
-    # freqs = freqs[freq_idx:freq_idx+1]
 
     num_noise_factors = len(noise_factor)
     parameter = {"noise factor" : noise_factor}
@@ -979,18 +896,6 @@ if __name__ == "__main__":
     BASE_FIG_FOLDER = pathlib.Path(__file__).parent.joinpath("figs")
     BASE_FIG_FOLDER.mkdir(exist_ok=True)
 
-    #rng = np.random.default_rng(12345654354)
     base_fdr = run_full_speech_exp()
 
-    #base_fdr = pathlib.Path(__file__).parent.joinpath("figs").joinpath("figs_2024_03_04_22_18_0 deg1 1e-2 noisefactor")
-    #base_fdr = pathlib.Path("c:/research/papers/2024_eusipco_manifold_cov_estimation/doc/figs").joinpath("figs_2024_03_05_01_17_0_deg1_1e_3noisefactor")
     plot_parameter_exp(base_fdr)
-
-    #exp(5, 1, rng, fp)
-    #base_fdr = run_exp_over_degrees_of_freedom()
-    # base_fdr = pathlib.Path(__file__).parent.joinpath("figs").joinpath("figs_2024_02_28_16_06_0")
-    # plot_parameter_exp(base_fdr)
-    # base_fdr = pathlib.Path(__file__).parent.joinpath("figs").joinpath("figs_2024_02_20_12_05_0 exp 2")
-    # plot_parameter_exp(base_fdr)
-    # base_fdr = pathlib.Path(__file__).parent.joinpath("figs").joinpath("figs_2024_02_20_12_13_0 exp 3")
-    #plot_parameter_exp(base_fdr)

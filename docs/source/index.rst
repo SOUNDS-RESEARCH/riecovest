@@ -1,4 +1,4 @@
-.. aspcol documentation master file, created by
+.. riecovest documentation master file, created by
    sphinx-quickstart on Wed Sep 13 10:22:13 2023.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
@@ -20,7 +20,7 @@ API Reference
 
 License
 =======
-The software is distributed under the MIT license. See the LICENSE file for more information. If you use this software in your research, please cite the following paper
+The software is distributed under the MIT license. See the LICENSE file for more information. If you use this software in your research, please cite the following paper: J. Brunnström, M. Moonen, and F. Elvander, “Robust signal and noise covariance matrix estimation using Riemannian optimization,” presented at the European Signal Processing Conference (EUSIPCO), Lyon, France, Aug. 2024. [Online]. Available: https://eurasip.org/Proceedings/Eusipco/Eusipco2024/pdfs/0000291.pdf
 
 Acknowledgements
 ================

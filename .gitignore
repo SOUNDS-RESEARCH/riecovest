@@ -9,6 +9,7 @@ __pycache__/*
 figs/old/*
 figs/*
 examples/figs/*
+examples/irutilities.py
 
 
 *.asv

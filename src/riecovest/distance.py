@@ -289,3 +289,75 @@ def tyler_log_likelihood_no_normalization(data, cov):
     likelihood += jnp.log(jnp.real(jnp.linalg.det(cov)))
     return -likelihood
 
+
+
+
+
+def corr_matrix_distance(A, B):
+    """Computes the correlation matrix distance
+    
+    0 means that the matrices are equal up to a scaling
+    1 means that they are maximally different (orthogonal in NxN dimensional space)
+
+    Parameters
+    ----------
+    mat1 : np.ndarray of shape (..., N, N)
+        First covariance matrix, should be symmetric and positive definite
+    mat2 : np.ndarray of shape (..., N, N)
+        Second covariance matrix, should be symmetric and positive definite
+
+    Returns
+    -------
+    distance : ndarray of shape (...,)
+        The distance between the two matrices. 
+        The shape is the same as the shape of the input matrices, except for the last two dimensions, which are removed.
+        If either of the input matrices are zero, the distance is set to NaN.
+
+    References
+    ----------
+    Correlation matrix distaince, a meaningful measure for evaluation of 
+    non-stationary MIMO channels - Herdin, Czink, Ozcelik, Bonek
+    """
+    #assert A.shape == B.shape
+    norm1 = jnp.linalg.norm(A, ord="fro", axis=(-2,-1))
+    norm2 = jnp.linalg.norm(B, ord="fro", axis=(-2,-1))
+
+    #jax.lax.cond(norm1 * norm2 == 0, lambda _: jnp.array(jnp.nan), lambda _: None, None)
+    #jnp.where(norm1 * norm2 == 0, jnp.array(jnp.nan), None)
+    #if norm1 * norm2 == 0:
+    #    return jnp.array(jnp.nan)
+    distance = jnp.real(1 - jnp.trace(A @ B) / (norm1 * norm2))
+    return distance
+
+
+def kl_divergence_gaussian(A, B):
+    """The Kullback Leibler divergence between two Gaussian distributions 
+
+    A and B are the covariance matrices of the two distributions. 
+    Assumes both of these distributions has zero mean.
+
+    It is a distance measure, so 0 means equal and then it goes to infinity
+    and the matrices become more unequal.
+
+    Parameters
+    ----------
+    mat1 : np.ndarray of shape (N, N)
+        First covariance matrix, should be symmetric and positive definite
+    mat2 : np.ndarray of shape (N, N)
+        Second covariance matrix, should be symmetric and positive definite
+    
+    Returns
+    -------
+    dist : float
+        The distance between the two matrices
+    """
+    assert A.shape == B.shape
+    assert A.shape[0] == A.shape[1]
+    assert A.ndim == 2
+    N = A.shape[0]
+    eigvals = matop.generalized_eigvalsh(A, B)
+
+    det1 = jnp.linalg.det(A)
+    det2 = jnp.linalg.det(B)
+    common_trace = jnp.sum(eigvals)
+    return jnp.real(jnp.sqrt((jnp.log(det2 / det1) + common_trace - N) / 2))

@@ -11,11 +11,11 @@ import json
 
 import matplotlib.pyplot as plt
 
-import aspcol.distance as aspdist
-import aspcol.utilities as utils
+import aspcore.utilities as utils
 import aspcol.plot as aspplot
 
 import riecovest.covariance_estimation as covest
+import riecovest.distance as dist
 import riecovest.random_matrices as rm
 
 
@@ -182,7 +182,7 @@ def show_matrices(mat_dict, fig_folder, name = ""):
         axes[i,2].set_title(f"Abs: {est_name}")
         
     
-    aspplot.output_plot("pdf", fig_folder, f"matrices_{name}")
+    aspplot.save_plot("pdf", fig_folder, f"matrices_{name}")
 
 def show_eigenvalues(mat_dict, fig_folder, name = ""):
 
@@ -194,7 +194,7 @@ def show_eigenvalues(mat_dict, fig_folder, name = ""):
         ax.legend()
 
         aspplot.set_basic_plot_look(ax)
-    aspplot.output_plot("pdf", fig_folder, f"eigenvalues_{name}")
+    aspplot.save_plot("pdf", fig_folder, f"eigenvalues_{name}")
     
 
 
@@ -240,11 +240,11 @@ def estimation_errors(est, cov_true, full_rank, fig_folder, name):
         metrics["mse trace-normalized"][est_name] = np.linalg.norm(cov_est_trace_normalized - cov_true_trace_normalized, ord="fro")**2
         metrics["nmse trace-normalized"][est_name] = np.linalg.norm(cov_est_trace_normalized - cov_true_trace_normalized, ord="fro")**2 / np.linalg.norm(cov_true_trace_normalized, ord="fro")**2
         #metrics["nmse trace-normalized (dB)"][est_name] = 10 * np.log10(metrics["nmse trace-normalized"][est_name])
-        metrics["corrmat_distance"][est_name] = aspdist.corr_matrix_distance(cov_est, cov_true).tolist()
+        metrics["corrmat_distance"][est_name] = dist.corr_matrix_distance(cov_est, cov_true).tolist()
 
         if full_rank:
-            metrics["airm"][est_name] = covest.airm(cov_est, cov_true).tolist()
-            metrics["kl divergence"][est_name] = aspdist.covariance_distance_kl_divergence(cov_est, cov_true).tolist()
+            metrics["airm"][est_name] = dist.airm(cov_est, cov_true).tolist()
+            metrics["kl divergence"][est_name] = dist.kl_divergence_gaussian(cov_est, cov_true).tolist()
 
     metrics_complex= {metric_name : {} for metric_name in metrics.keys()}
     for metric_name, metric_value in metrics.items():
@@ -372,11 +372,22 @@ def run_exp_over_degrees_of_freedom(base_fig_folder):
     fig_folder = utils.get_unique_folder("figs_", base_fig_folder)
     fig_folder.mkdir()
 
-    dim = 10
-    rank = 3
-    num_samples = 20
-    dof = [1, 2, 3, 4, 5, 10, 20, 50]
+    # === Parameters used in the paper ===
+    # dim = 10
+    # rank = 3
+    # num_samples = 20
+    # dof = [1, 2, 3, 4, 5, 10, 20, 50]
 
+    # === Parameters for a fast test === 
+    dim = 4
+    rank = 2
+    num_samples = 3
+    dof = [2, 5, 20]
+
+    print(f"Degrees of freedom: {dof}")
+    print(f"Number of monte carlo samples: {num_samples}")
+    print(f"Dimension: {dim}")
+    print(f"Rank: {rank}")
 
     parameter = {"dof" : dof}
     with open(fig_folder.joinpath("parameter.json"), "w") as f:
@@ -384,6 +395,7 @@ def run_exp_over_degrees_of_freedom(base_fig_folder):
 
     folders = []
     for dof_val in dof:
+        print(f"Running Monte Carlo trial with dof = {dof_val}")
         mc_fig_folder = run_monte_carlo_trial(num_samples, dim, rank, complex_data=True, noise_dist="t-distribution", signal_dist="gaussian", degrees_of_freedom=dof_val, base_fig_folder=fig_folder)
         folders.append(mc_fig_folder)
 
@@ -430,7 +442,7 @@ def plot_parameter_exp(fig_folder):
         ax.set_xlabel(parameter_name)
         ax.set_ylabel(sum_name)
         aspplot.set_basic_plot_look(ax)
-        aspplot.output_plot("tikz", fig_folder, f"{sum_name}_{parameter_name}")
+        aspplot.save_plot("pdf", fig_folder, f"{sum_name}_{parameter_name}")
 
         fig, ax = plt.subplots(1,1, figsize=(8,6))
         for nm in algo_names:
@@ -450,7 +462,7 @@ def plot_parameter_exp(fig_folder):
         ax.set_xlabel(f"{parameter_name}")
         ax.set_ylabel(f"{sum_name} (dB)")
         aspplot.set_basic_plot_look(ax)
-        aspplot.output_plot("tikz", fig_folder, f"{sum_name}_{parameter_name}_db")
+        aspplot.save_plot("pdf", fig_folder, f"{sum_name}_{parameter_name}_db")
 
 
 
@@ -496,7 +508,7 @@ def plot_snr_for_exp(fig_folder):
     ax.set_xlabel(parameter_name)
     ax.set_ylabel("Signal to noise ratio")
     aspplot.set_basic_plot_look(ax)
-    aspplot.output_plot("tikz", fig_folder, f"snr_{parameter_name}")
+    aspplot.save_plot("pdf", fig_folder, f"snr_{parameter_name}")
 
     fig, ax = plt.subplots(1,1, figsize=(8,6))
     ax.plot(parameter_vals, 10*np.log10(snr))
@@ -504,7 +516,7 @@ def plot_snr_for_exp(fig_folder):
     ax.set_xlabel(parameter_name)
     ax.set_ylabel("Signal to noise ratio")
     aspplot.set_basic_plot_look(ax)
-    aspplot.output_plot("tikz", fig_folder, f"snr_{parameter_name}_db")
+    aspplot.save_plot("pdf", fig_folder, f"snr_{parameter_name}_db")
 
 
 

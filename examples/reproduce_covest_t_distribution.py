@@ -12,7 +12,6 @@ import json
 import matplotlib.pyplot as plt
 
 import aspcore.utilities as utils
-import aspcol.plot as aspplot
 
 import riecovest.covariance_estimation as covest
 import riecovest.distance as dist
@@ -182,7 +181,7 @@ def show_matrices(mat_dict, fig_folder, name = ""):
         axes[i,2].set_title(f"Abs: {est_name}")
         
     
-    aspplot.save_plot("pdf", fig_folder, f"matrices_{name}")
+    utils.save_plot("pdf", fig_folder, f"matrices_{name}")
 
 def show_eigenvalues(mat_dict, fig_folder, name = ""):
 
@@ -193,8 +192,8 @@ def show_eigenvalues(mat_dict, fig_folder, name = ""):
         ax.set_xlabel("Eigenvalue index")
         ax.legend()
 
-        aspplot.set_basic_plot_look(ax)
-    aspplot.save_plot("pdf", fig_folder, f"eigenvalues_{name}")
+        utils.set_basic_plot_look(ax)
+    utils.save_plot("pdf", fig_folder, f"eigenvalues_{name}")
     
 
 
@@ -441,8 +440,8 @@ def plot_parameter_exp(fig_folder):
         ax.legend()
         ax.set_xlabel(parameter_name)
         ax.set_ylabel(sum_name)
-        aspplot.set_basic_plot_look(ax)
-        aspplot.save_plot("pdf", fig_folder, f"{sum_name}_{parameter_name}")
+        utils.set_basic_plot_look(ax)
+        utils.save_plot("pdf", fig_folder, f"{sum_name}_{parameter_name}")
 
         fig, ax = plt.subplots(1,1, figsize=(8,6))
         for nm in algo_names:
@@ -461,8 +460,8 @@ def plot_parameter_exp(fig_folder):
         ax.legend()
         ax.set_xlabel(f"{parameter_name}")
         ax.set_ylabel(f"{sum_name} (dB)")
-        aspplot.set_basic_plot_look(ax)
-        aspplot.save_plot("pdf", fig_folder, f"{sum_name}_{parameter_name}_db")
+        utils.set_basic_plot_look(ax)
+        utils.save_plot("pdf", fig_folder, f"{sum_name}_{parameter_name}_db")
 
 
 
@@ -507,16 +506,16 @@ def plot_snr_for_exp(fig_folder):
     #ax.legend()
     ax.set_xlabel(parameter_name)
     ax.set_ylabel("Signal to noise ratio")
-    aspplot.set_basic_plot_look(ax)
-    aspplot.save_plot("pdf", fig_folder, f"snr_{parameter_name}")
+    utils.set_basic_plot_look(ax)
+    utils.save_plot("pdf", fig_folder, f"snr_{parameter_name}")
 
     fig, ax = plt.subplots(1,1, figsize=(8,6))
     ax.plot(parameter_vals, 10*np.log10(snr))
     
     ax.set_xlabel(parameter_name)
     ax.set_ylabel("Signal to noise ratio")
-    aspplot.set_basic_plot_look(ax)
-    aspplot.save_plot("pdf", fig_folder, f"snr_{parameter_name}_db")
+    utils.set_basic_plot_look(ax)
+    utils.save_plot("pdf", fig_folder, f"snr_{parameter_name}_db")
 
 
 

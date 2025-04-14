@@ -20,6 +20,7 @@ dependencies = [
     "scipy",
     "jax",
     "pymanopt",
+    "aspcore",
 ]
 
 [project.optional-dependencies]

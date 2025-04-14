@@ -23,7 +23,6 @@ import matplotlib.pyplot as plt
 
 import aspcore.filter as fc
 import aspcore.utilities as utils
-import aspcol.plot as aspplot
 
 import riecovest.covariance_estimation as covest
 import riecovest.random_matrices as rm
@@ -48,8 +47,8 @@ def analyze_audio_signals(signal_stft, noise_stft, fig_folder):
         axes[1].plot(Rv_eigvals[:,i], label=f"{i}th largest")
     for ax in axes:
         ax.legend()
-        aspplot.set_basic_plot_look(ax)
-    aspplot.save_plot("pdf", fig_folder, "covariance_eigenvalues")
+        utils.set_basic_plot_look(ax)
+    utils.save_plot("pdf", fig_folder, "covariance_eigenvalues")
 
     fig, axes = plt.subplots(2,1)
     axes[0].set_title("Signal eigenvalues")
@@ -60,8 +59,8 @@ def analyze_audio_signals(signal_stft, noise_stft, fig_folder):
         axes[1].plot(10*np.log((Rv_eigvals[:,i]+1e-10)**2), label=f"{i}th largest")
     for ax in axes:
         ax.legend()
-        aspplot.set_basic_plot_look(ax)
-    aspplot.save_plot("pdf", fig_folder, "covariance_eigenvalues_db")
+        utils.set_basic_plot_look(ax)
+    utils.save_plot("pdf", fig_folder, "covariance_eigenvalues_db")
 
     num_plots = 2
     jump = num_freq//num_plots
@@ -90,8 +89,8 @@ def t_dist_fit_over_freqs(stft, fig_folder, plot_name= ""):
     axes[2].set_ylabel("Scale (standard deviation)")
     for ax in axes:
         ax.set_xlabel("Frequency bin index")
-        aspplot.set_basic_plot_look(ax)
-    aspplot.save_plot("pdf", fig_folder, f"t_fit_over_freqs_{plot_name}")
+        utils.set_basic_plot_look(ax)
+    utils.save_plot("pdf", fig_folder, f"t_fit_over_freqs_{plot_name}")
 
 def qq_against_gaussian(seq, fig_folder, plot_name=""):
     #noise_mean, noise_std = spstat.norm.fit(seq)
@@ -99,7 +98,7 @@ def qq_against_gaussian(seq, fig_folder, plot_name=""):
     
     plt_object = pplot(pd.DataFrame({"data" : seq}), x="data", y=gaussian_dist.dist, kind='qq', height=4, aspect=2, display_kws={"identity":True})
     
-    aspplot.save_plot("pdf", fig_folder, f"qq_gaussian{plot_name}")
+    utils.save_plot("pdf", fig_folder, f"qq_gaussian{plot_name}")
 
 def resample_multichannel(ir, ratio):
     if ir.ndim == 3:
@@ -289,11 +288,11 @@ def gen_data(dim, sig_rank, snr, num_cov_data, num_data, fig_folder, noise_facto
     for i, ni in enumerate(noise_impulsive_all):
         axes[2+i].plot(ni.T, alpha=0.7, label=f"noise impulsive nf:{noise_factor[i]}")
     for ax in axes:
-        aspplot.set_basic_plot_look(ax)
+        utils.set_basic_plot_look(ax)
         ax.set_xlabel("Samples")
         ax.set_ylabel("Amplitude")
         ax.legend(loc="upper right")
-    aspplot.save_plot("pdf", fig_folder, "time_domain_signals")
+    utils.save_plot("pdf", fig_folder, "time_domain_signals")
 
     # ========== COMBINED SIGNAL ============    
     noisy_sig = [signal + ns for ns in noise]
@@ -312,14 +311,15 @@ def gen_data(dim, sig_rank, snr, num_cov_data, num_data, fig_folder, noise_facto
     noisy_sig_stft = np.stack([ns[freq_idx,...] for ns in noisy_sig_stft], axis=0)
     signal_stft = np.tile(signal_stft[freq_idx:freq_idx+1,...], (noise_stft.shape[0], 1,1))
 
+    offset = 2
     num_freqs = signal_stft.shape[0]
     num_blocks = signal_stft.shape[-1]
-    num_segments_total = num_blocks // num_blocks_per_segment
+    num_segments_total = num_blocks // num_blocks_per_segment - offset
 
     cov_samples_noise_only = np.zeros((num_segments_total, num_freqs, dim, num_blocks_per_segment), dtype=complex)
     cov_samples_signal_only = np.zeros((num_segments_total, num_freqs, dim, num_blocks_per_segment), dtype=complex)
     cov_samples_noisy_signal = np.zeros((num_segments_total, num_freqs, dim, num_blocks_per_segment), dtype=complex)
-    offset = 2
+    
     for i in range(num_segments_total):
         cov_samples_signal_only[i,...] = signal_stft[...,offset+i*num_blocks_per_segment:offset+(i+1)*num_blocks_per_segment]
         cov_samples_noisy_signal[i,...] = signal_stft[...,offset+i*num_blocks_per_segment:offset+(i+1)*num_blocks_per_segment] + \
@@ -366,7 +366,7 @@ def plot_stft(spec, plot_name, fig_folder):
         ax.set_aspect("auto")
         ax.set_xlabel("Time (block)")
         ax.set_ylabel("Frequency (index)")
-    aspplot.save_plot("pdf", fig_folder, f"stft_{plot_name}")
+    utils.save_plot("pdf", fig_folder, f"stft_{plot_name}")
 
 def show_matrices(mat_dict, fig_folder, name = ""):
     fig, axes = plt.subplots(len(mat_dict), 3, figsize=(8, 3*len(mat_dict)))
@@ -383,7 +383,7 @@ def show_matrices(mat_dict, fig_folder, name = ""):
         axes[i,2].set_title(f"Abs: {est_name}")
         
     
-    aspplot.save_plot("pdf", fig_folder, f"matrices_{name}")
+    utils.save_plot("pdf", fig_folder, f"matrices_{name}")
 
 def show_eigenvalues(mat_dict, fig_folder, name = ""):
 
@@ -394,8 +394,8 @@ def show_eigenvalues(mat_dict, fig_folder, name = ""):
         ax.set_xlabel("Eigenvalue index")
         ax.legend()
 
-        aspplot.set_basic_plot_look(ax)
-    aspplot.save_plot("pdf", fig_folder, f"eigenvalues_{name}")
+        utils.set_basic_plot_look(ax)
+    utils.save_plot("pdf", fig_folder, f"eigenvalues_{name}")
     
 def estimation_errors_all(cov_sig, cov_noise, true_signal_cov, true_noise_cov, fig_folder, plot_name=""):
     true_noisy_sig_cov = true_signal_cov + true_noise_cov
@@ -705,8 +705,8 @@ def summarize_metrics(metric_list, fig_folder):
     ax.legend()
     ax.set_xlabel("Time segment")
     ax.set_ylabel("NMSE (dB)")
-    aspplot.set_basic_plot_look(ax)
-    aspplot.save_plot("pdf", fig_folder, f"nmse_over_time")
+    utils.set_basic_plot_look(ax)
+    utils.save_plot("pdf", fig_folder, f"nmse_over_time")
 
 def plot_parameter_exp(fig_folder):
     folders = []
@@ -756,8 +756,8 @@ def plot_parameter_exp(fig_folder):
         ax.legend()
         ax.set_xlabel(parameter_name)
         ax.set_ylabel(sum_name)
-        aspplot.set_basic_plot_look(ax)
-        aspplot.save_plot("pdf", fig_folder, f"{sum_name}_{parameter_name}")
+        utils.set_basic_plot_look(ax)
+        utils.save_plot("pdf", fig_folder, f"{sum_name}_{parameter_name}")
 
         fig, ax = plt.subplots(1,1, figsize=(8,6))
         for nm in algo_names:
@@ -783,8 +783,8 @@ def plot_parameter_exp(fig_folder):
         ax.legend()
         ax.set_xlabel(f"{parameter_name}")
         ax.set_ylabel(f"{sum_name} (dB)")
-        aspplot.set_basic_plot_look(ax)
-        aspplot.save_plot("pdf", fig_folder, f"{sum_name}_{parameter_name}_db")
+        utils.set_basic_plot_look(ax)
+        utils.save_plot("pdf", fig_folder, f"{sum_name}_{parameter_name}_db")
 
         if np.min(parameter_vals) > 0:
             log_param_vals = np.log10(parameter_vals)
@@ -812,8 +812,8 @@ def plot_parameter_exp(fig_folder):
             ax.legend()
             ax.set_xlabel(f"{parameter_name} (log10)")
             ax.set_ylabel(f"{sum_name} (dB)")
-            aspplot.set_basic_plot_look(ax)
-            aspplot.save_plot("pdf", fig_folder, f"{sum_name}_{parameter_name}_logdb")
+            utils.set_basic_plot_look(ax)
+            utils.save_plot("pdf", fig_folder, f"{sum_name}_{parameter_name}_logdb")
 
 def get_all_algo_names(total_summary):
     one_dict = total_summary[list(total_summary.keys())[0]]
@@ -859,16 +859,26 @@ def run_full_speech_exp():
     fig_folder = utils.get_unique_folder("figs_", BASE_FIG_FOLDER)
     fig_folder.mkdir()
 
-    num_cov_data = 64
-    num_data = 1000
+    # === Parameters used in the paper ===
+    # num_cov_data = 64
+    # num_data = 1000
+    # snr_db = 10
+    # snr_lin = 10**(snr_db / 10)
+    # dim = 5
+    # rank = 1
+    # noise_factor = np.logspace(1, 5, 9).tolist()
+
+    # === Parameters for a comparatively fast test === 
+    num_cov_data = 8
+    num_data = 32
     snr_db = 10
     snr_lin = 10**(snr_db / 10)
     dim = 5
     rank = 1
+    noise_factor = np.logspace(1, 5, 3).tolist()
 
     rng = np.random.default_rng(1234564354)
 
-    noise_factor = np.logspace(1, 5, 9).tolist()
     freq_idx = 64
     noisy_sig, signal, noise, cov_samples_noisy_signal, cov_samples_noise_only, cov_samples_signal_only, cov_signal, cov_noise, freqs = gen_data(dim, rank, snr_lin, num_cov_data, num_data, fig_folder, noise_factor, freq_idx, rng)
 

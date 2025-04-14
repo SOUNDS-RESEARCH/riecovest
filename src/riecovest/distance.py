@@ -195,6 +195,10 @@ def wishart_log_likelihood(mat_variable, cov, N, regularization = 1e6):
         positive definite matrix
     N : int
         the degree of freedom parameter for the wishart distribution
+    regularization : float, optional
+        regularization parameter for the covariance matrix. The default is 1e6.
+        The matrix is regularized by adding a scaled identity matrix to the covariance matrix,
+        such that the condition number becomes at most regularization.
 
     Returns
     -------
@@ -204,8 +208,6 @@ def wishart_log_likelihood(mat_variable, cov, N, regularization = 1e6):
     M = mat_variable.shape[-1]
     #mat_variable = mat_variable * N
 
-    #mat_variable = mat_variable #/ np.sqrt(N)
-    #cov = cov / N
     cov = aspmat.regularize_matrix_with_condition_number(cov, regularization)
     f1 = -N * jnp.log(jnp.linalg.det(cov))
     f2 = -jnp.trace(jnp.linalg.solve(cov, mat_variable))
@@ -322,10 +324,6 @@ def corr_matrix_distance(A, B):
     norm1 = jnp.linalg.norm(A, ord="fro", axis=(-2,-1))
     norm2 = jnp.linalg.norm(B, ord="fro", axis=(-2,-1))
 
-    #jax.lax.cond(norm1 * norm2 == 0, lambda _: jnp.array(jnp.nan), lambda _: None, None)
-    #jnp.where(norm1 * norm2 == 0, jnp.array(jnp.nan), None)
-    #if norm1 * norm2 == 0:
-    #    return jnp.array(jnp.nan)
     distance = jnp.real(1 - jnp.trace(A @ B) / (norm1 * norm2))
     return distance
 
@@ -351,9 +349,9 @@ def kl_divergence_gaussian(A, B):
     dist : float
         The distance between the two matrices
     """
-    assert A.shape == B.shape
-    assert A.shape[0] == A.shape[1]
-    assert A.ndim == 2
+    #assert A.shape == B.shape
+    #assert A.shape[0] == A.shape[1]
+    #assert A.ndim == 2
     N = A.shape[0]
     eigvals = matop.generalized_eigvalsh(A, B)
 

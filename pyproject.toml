@@ -30,6 +30,7 @@ examples = [
     "seaborn",
     "seaborn_qqplot",
     "matplotlib",
+    "samplerate",
 ]
 
 [project.urls]

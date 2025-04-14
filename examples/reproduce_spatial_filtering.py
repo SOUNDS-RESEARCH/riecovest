@@ -116,7 +116,7 @@ def load_meshrir(sr):
     ratio = sr / orig_sr
 
     pos_mic, pos_src, ir_hires = irutilities.loadIR(MESHRIR_FOLDER)
-    pos_mic = -pos_mic
+    #pos_mic = -pos_mic
     ir_hires = ir_hires[(0,19,21),...]
 
     mic_idxs = np.array([1, 3, 19, 23, 25])

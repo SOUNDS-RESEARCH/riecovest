@@ -20,7 +20,24 @@ API Reference
 
 License
 =======
-The software is distributed under the MIT license. See the LICENSE file for more information. If you use this software in your research, please cite the following paper: J. Brunnström, M. Moonen, and F. Elvander, “Robust signal and noise covariance matrix estimation using Riemannian optimization,” presented at the European Signal Processing Conference (EUSIPCO), Lyon, France, Aug. 2024. [Online]. Available: https://eurasip.org/Proceedings/Eusipco/Eusipco2024/pdfs/0000291.pdf
+The software is distributed under the MIT license. See the LICENSE file for more information. 
+
+The package was developed in the course of the following research. Please consider citing the following papers if relevant to your work. 
+
+*Robust signal and noise covariance matrix estimation using Riemannian optimization*, J. Brunnström, M. Moonen, and F. Elvander
+
+.. code-block:: bibtex
+
+   @inproceedings{brunnstromRobust2024,
+   title = {Robust Signal and Noise Covariance Matrix Estimation Using {{Riemannian}} Optimization},
+   booktitle = {European {{Signal Processing Conference}} ({{EUSIPCO}})},
+   author = {Brunnstr{\"o}m, Jesper and Moonen, Marc and Elvander, Filip},
+   year = {2024},
+   month = sep,
+   pages={291-295},
+   keywords={Manifolds;Heavily-tailed distribution;Noise;Estimation;Europe;Euclidean distance;Cost function;Eigenvalues and eigenfunctions;Covariance matrices;Synthetic data;noise reduction;robust covariance matrix estimation;Riemannian optimization;Hermitian positive matrices;manifolds},
+   doi={10.23919/EUSIPCO63174.2024.10715247}}
+   }
 
 Acknowledgements
 ================

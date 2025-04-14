@@ -1,0 +1,6 @@
+riecovest.random\_matrices.random\_signal\_and\_noise\_covariance
+=================================================================
+
+.. currentmodule:: riecovest.random_matrices
+
+.. autofunction:: random_signal_and_noise_covariance

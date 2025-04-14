@@ -1,0 +1,6 @@
+riecovest.random\_matrices.sample\_elliptic\_distribution
+=========================================================
+
+.. currentmodule:: riecovest.random_matrices
+
+.. autofunction:: sample_elliptic_distribution

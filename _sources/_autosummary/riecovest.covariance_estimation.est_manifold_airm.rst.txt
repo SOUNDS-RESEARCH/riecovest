@@ -1,0 +1,6 @@
+riecovest.covariance\_estimation.est\_manifold\_airm
+====================================================
+
+.. currentmodule:: riecovest.covariance_estimation
+
+.. autofunction:: est_manifold_airm

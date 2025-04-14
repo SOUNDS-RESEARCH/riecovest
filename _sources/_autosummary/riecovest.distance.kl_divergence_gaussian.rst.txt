@@ -1,0 +1,6 @@
+riecovest.distance.kl\_divergence\_gaussian
+===========================================
+
+.. currentmodule:: riecovest.distance
+
+.. autofunction:: kl_divergence_gaussian

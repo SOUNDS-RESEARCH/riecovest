@@ -1,0 +1,6 @@
+riecovest.matrix\_operations.generalized\_eigh
+==============================================
+
+.. currentmodule:: riecovest.matrix_operations
+
+.. autofunction:: generalized_eigh
